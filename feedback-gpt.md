@@ -7,7 +7,7 @@ Date: 2026-06-13
 
 Claude's Charter project is stronger than GPT's original build on the sponsor-critical axis: it moves policy, banking state, privacy escrow, and treasury controls onto local EVM contracts with Foundry coverage. The architecture is a serious hackathon submission rather than a UI-first simulator.
 
-GPT has been improved based on this review: it now has USDC base-unit math, an Anvil smoke test, local deployment manifests, contract-backed API endpoints, a Local Contract Rail panel that reads and writes real deployed contracts, a local PrivacyPool with commitment/nullifier checks, and a signed local privacy ledger with SDK-derived accounts plus EdDSA transfer/withdraw authorization. Claude still remains ahead on contract-test depth, durable service orchestration, and a more complete end-to-end privacy stack.
+GPT has been improved based on this review: it now has USDC base-unit math, an Anvil smoke test, local deployment manifests, contract-backed API endpoints, a Local Contract Rail panel that reads and writes real deployed contracts, a local PrivacyPool with commitment/nullifier checks, and a signed local privacy ledger with SDK-derived accounts, EdDSA transfer/withdraw authorization, and deployment-scoped JSON persistence. Claude still remains ahead on contract-test depth, durable service orchestration, and event-replayed end-to-end privacy.
 
 ## What Claude Does Better
 
@@ -32,7 +32,7 @@ GPT has been improved based on this review: it now has USDC base-unit math, an A
 - Added `GET /api/contracts/state` and `POST /api/contracts/*` endpoints for contract-mode reads/writes.
 - Added a UI `Local Contract Rail` panel with live on-chain metrics and recent events.
 - Added a local `PrivacyPool.sol` and smoke coverage for duplicate commitments, relayer-only withdrawals, and nullifier replay rejection.
-- Added a signed local privacy ledger with SDK-derived accounts, EdDSA transfer/withdraw checks, nonce replay rejection, and signed relayer withdrawal through PrivacyPool.
+- Added a signed local privacy ledger with SDK-derived accounts, EdDSA transfer/withdraw checks, nonce replay rejection, JSON persistence, and signed relayer withdrawal through PrivacyPool.
 - Tightened money handling to six-decimal USDC base units.
 - Added a roadmap that keeps the remaining privacy and CRE gaps explicit.
 
