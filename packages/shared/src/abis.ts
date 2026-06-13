@@ -8,11 +8,11 @@ import MockUSDCAbi from "./abis/MockUSDC.json";
 import MockYieldVaultAbi from "./abis/MockYieldVault.json";
 
 export const abis = {
-  CharterFactory: CharterFactoryAbi as const,
-  Bank: BankAbi as const,
-  PolicyRegistry: PolicyRegistryAbi as const,
-  ExecutionRouter: ExecutionRouterAbi as const,
-  PrivacyPool: PrivacyPoolAbi as const,
-  MockUSDC: MockUSDCAbi as const,
-  MockYieldVault: MockYieldVaultAbi as const,
-};
+  CharterFactory: CharterFactoryAbi,
+  Bank: BankAbi,
+  PolicyRegistry: PolicyRegistryAbi,
+  ExecutionRouter: ExecutionRouterAbi,
+  PrivacyPool: PrivacyPoolAbi,
+  MockUSDC: MockUSDCAbi,
+  MockYieldVault: MockYieldVaultAbi,
+} as const;
