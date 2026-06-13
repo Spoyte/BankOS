@@ -7,7 +7,7 @@ Date: 2026-06-13
 
 Claude's Charter project is stronger than GPT's original build on the sponsor-critical axis: it moves policy, banking state, privacy escrow, and treasury controls onto local EVM contracts with Foundry coverage. The architecture is a serious hackathon submission rather than a UI-first simulator.
 
-GPT has been improved based on this review: it now has USDC base-unit math, an Anvil smoke test, local deployment manifests, contract-backed API endpoints, and a Local Contract Rail panel that reads and writes real deployed contracts. Claude still remains ahead on the privacy and contract-test depth.
+GPT has been improved based on this review: it now has USDC base-unit math, an Anvil smoke test, local deployment manifests, contract-backed API endpoints, a Local Contract Rail panel that reads and writes real deployed contracts, and a local PrivacyPool with commitment/nullifier checks. Claude still remains ahead on signed private-transfer authorization and contract-test depth.
 
 ## What Claude Does Better
 
@@ -31,6 +31,7 @@ GPT has been improved based on this review: it now has USDC base-unit math, an A
 - Added `npm run contracts:deploy:local` and deployment manifests.
 - Added `GET /api/contracts/state` and `POST /api/contracts/*` endpoints for contract-mode reads/writes.
 - Added a UI `Local Contract Rail` panel with live on-chain metrics and recent events.
+- Added a local `PrivacyPool.sol` and smoke coverage for duplicate commitments, relayer-only withdrawals, and nullifier replay rejection.
 - Tightened money handling to six-decimal USDC base units.
 - Added a roadmap that keeps the remaining privacy and CRE gaps explicit.
 

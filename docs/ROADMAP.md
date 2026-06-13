@@ -32,6 +32,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ todo · �groups what needs 
 | 14 | **Steward member roster** + post-charter product **editing UI** | ✅ |
 | 15 | **EURC** (Arc-native) multi-currency support | ⬜ |
 | 16 | `slither` security pass on the contracts | ⬜ |
+| 17 | **Ledger Clear-Signing** simulation gating high-risk steward actions (ERC-7730, Ledger track) | ✅ |
 
 ## Done ✅
 
