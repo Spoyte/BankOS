@@ -14,6 +14,7 @@ const contracts = [
   "Bank",
   "PolicyRegistry",
   "ExecutionRouter",
+  "PrivacyPool",
   "MockUSDC",
   "MockYieldVault",
 ];

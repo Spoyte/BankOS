@@ -13,5 +13,7 @@ export interface Deployment {
   charterFactory: Address;
   bankImplementation: Address;
   yieldVault: Address;
+  privacyPool: Address;
   attester: Address;
+  engineRelayer: Address;
 }

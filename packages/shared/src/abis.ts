@@ -3,6 +3,7 @@ import CharterFactoryAbi from "./abis/CharterFactory.json";
 import BankAbi from "./abis/Bank.json";
 import PolicyRegistryAbi from "./abis/PolicyRegistry.json";
 import ExecutionRouterAbi from "./abis/ExecutionRouter.json";
+import PrivacyPoolAbi from "./abis/PrivacyPool.json";
 import MockUSDCAbi from "./abis/MockUSDC.json";
 import MockYieldVaultAbi from "./abis/MockYieldVault.json";
 
@@ -11,6 +12,7 @@ export const abis = {
   Bank: BankAbi as const,
   PolicyRegistry: PolicyRegistryAbi as const,
   ExecutionRouter: ExecutionRouterAbi as const,
+  PrivacyPool: PrivacyPoolAbi as const,
   MockUSDC: MockUSDCAbi as const,
   MockYieldVault: MockYieldVaultAbi as const,
 };

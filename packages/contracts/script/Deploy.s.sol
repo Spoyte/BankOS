@@ -8,6 +8,7 @@ import {PolicyRegistry} from "../src/PolicyRegistry.sol";
 import {ExecutionRouter} from "../src/ExecutionRouter.sol";
 import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 import {MockYieldVault} from "../src/mocks/MockYieldVault.sol";
+import {PrivacyPool} from "../src/PrivacyPool.sol";
 import {IERC4626} from "../src/interfaces/IExternal.sol";
 
 /// @notice Deploys the full Charter stack and writes addresses to deployments/<chainId>.json.
@@ -20,12 +21,14 @@ import {IERC4626} from "../src/interfaces/IExternal.sol";
 contract Deploy is Script {
     // anvil default accounts
     uint256 constant ANVIL_PK0 = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
-    address constant ANVIL_ACCT1 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8;
+    address constant ANVIL_ACCT1 = 0x70997970C51812dc3A010C7d01b50e0d17dc79C8; // attester
+    address constant ANVIL_ACCT5 = 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc; // unlink engine relayer
 
     function run() external {
         uint256 pk = vm.envOr("PRIVATE_KEY", ANVIL_PK0);
         address deployer = vm.addr(pk);
         address attester = vm.envOr("ATTESTER", ANVIL_ACCT1);
+        address engineRelayer = vm.envOr("ENGINE_RELAYER", ANVIL_ACCT5);
         address usdcAddr = vm.envOr("USDC_ADDRESS", address(0));
 
         vm.startBroadcast(pk);
@@ -43,6 +46,9 @@ contract Deploy is Script {
         router.setAllowed(address(vault), IERC4626.deposit.selector, true);
         router.setAllowed(address(vault), IERC4626.redeem.selector, true);
 
+        // Shielded pool for the Unlink privacy layer (engine settles withdrawals).
+        PrivacyPool pool = new PrivacyPool(deployer, usdcAddr, engineRelayer);
+
         vm.stopBroadcast();
 
         console2.log("USDC            ", usdcAddr);
@@ -51,29 +57,49 @@ contract Deploy is Script {
         console2.log("CharterFactory  ", address(factory));
         console2.log("BankImpl        ", factory.bankImplementation());
         console2.log("YieldVault      ", address(vault));
+        console2.log("PrivacyPool     ", address(pool));
         console2.log("Attester        ", attester);
+        console2.log("EngineRelayer   ", engineRelayer);
 
-        _writeJson(usdcAddr, address(policy), address(router), address(factory), factory.bankImplementation(), address(vault), attester);
+        _writeJson(
+            Addrs({
+                usdc: usdcAddr,
+                policy: address(policy),
+                router: address(router),
+                factory: address(factory),
+                bankImpl: factory.bankImplementation(),
+                vault: address(vault),
+                pool: address(pool),
+                attester: attester,
+                engineRelayer: engineRelayer
+            })
+        );
     }
 
-    function _writeJson(
-        address usdc,
-        address policy,
-        address router,
-        address factory,
-        address bankImpl,
-        address vault,
-        address attester
-    ) internal {
+    struct Addrs {
+        address usdc;
+        address policy;
+        address router;
+        address factory;
+        address bankImpl;
+        address vault;
+        address pool;
+        address attester;
+        address engineRelayer;
+    }
+
+    function _writeJson(Addrs memory a) internal {
         string memory o = "deployment";
         vm.serializeUint(o, "chainId", block.chainid);
-        vm.serializeAddress(o, "usdc", usdc);
-        vm.serializeAddress(o, "policyRegistry", policy);
-        vm.serializeAddress(o, "executionRouter", router);
-        vm.serializeAddress(o, "charterFactory", factory);
-        vm.serializeAddress(o, "bankImplementation", bankImpl);
-        vm.serializeAddress(o, "yieldVault", vault);
-        string memory json = vm.serializeAddress(o, "attester", attester);
+        vm.serializeAddress(o, "usdc", a.usdc);
+        vm.serializeAddress(o, "policyRegistry", a.policy);
+        vm.serializeAddress(o, "executionRouter", a.router);
+        vm.serializeAddress(o, "charterFactory", a.factory);
+        vm.serializeAddress(o, "bankImplementation", a.bankImpl);
+        vm.serializeAddress(o, "yieldVault", a.vault);
+        vm.serializeAddress(o, "privacyPool", a.pool);
+        vm.serializeAddress(o, "engineRelayer", a.engineRelayer);
+        string memory json = vm.serializeAddress(o, "attester", a.attester);
 
         string memory path = string.concat("deployments/", vm.toString(block.chainid), ".json");
         vm.writeJson(json, path);
