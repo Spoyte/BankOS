@@ -61,8 +61,28 @@ contract PolicyRegistry is Ownable {
     }
 
     /// @notice Land a compliance attestation for `member` at `bank`. Called by the CRE workflow's
-    ///         forwarder after a successful confidential eligibility check.
+    ///         forwarder (or the local DON simulator) after a successful confidential eligibility check.
     function attest(address bank, address member, CharterTypes.Policy calldata p) external onlyAttester {
+        _attest(bank, member, p);
+    }
+
+    /// @notice CRE report-receiver entrypoint. The Chainlink DON delivers a signed report via the
+    ///         KeystoneForwarder, which calls `onReport(metadata, report)`. The report is the abi
+    ///         encoding of `(bank, member, Policy)`. `msg.sender` (the forwarder) must be an attester.
+    ///         This is the canonical "Chainlink CRE makes an on-chain state change" path.
+    function onReport(bytes calldata, bytes calldata report) external onlyAttester {
+        (address bank, address member, CharterTypes.Policy memory p) =
+            abi.decode(report, (address, address, CharterTypes.Policy));
+        _attestMemory(bank, member, p);
+    }
+
+    function _attest(address bank, address member, CharterTypes.Policy calldata p) internal {
+        if (p.expiry != 0 && p.expiry <= block.timestamp) revert ExpiryInPast();
+        _policies[bank][member] = p;
+        emit PolicyAttested(bank, member, p.tier, p.canDeposit, p.canBorrow, p.jurisdiction, p.expiry, msg.sender);
+    }
+
+    function _attestMemory(address bank, address member, CharterTypes.Policy memory p) internal {
         if (p.expiry != 0 && p.expiry <= block.timestamp) revert ExpiryInPast();
         _policies[bank][member] = p;
         emit PolicyAttested(bank, member, p.tier, p.canDeposit, p.canBorrow, p.jurisdiction, p.expiry, msg.sender);

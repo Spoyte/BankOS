@@ -165,6 +165,28 @@ contract PolicyGateTest is CharterTestBase {
         vm.stopPrank();
     }
 
+    function test_onReport_landsAttestationViaForwarder() public {
+        Bank bank = _charter();
+        CharterTypes.Policy memory p =
+            CharterTypes.Policy(3, true, true, keccak256("US-NY"), uint64(block.timestamp + 30 days));
+        bytes memory report = abi.encode(address(bank), alice, p);
+        // attester stands in for the KeystoneForwarder delivering the DON-signed report
+        vm.prank(attester);
+        policy.onReport("", report);
+        assertTrue(policy.isEligibleToDeposit(address(bank), alice));
+        assertTrue(policy.isEligibleToBorrow(address(bank), alice));
+        assertEq(policy.tierOf(address(bank), alice), 3);
+    }
+
+    function test_onReport_onlyAttester() public {
+        Bank bank = _charter();
+        CharterTypes.Policy memory p =
+            CharterTypes.Policy(1, true, false, bytes32(0), uint64(block.timestamp + 1 days));
+        vm.prank(alice);
+        vm.expectRevert(PolicyRegistry.NotAttester.selector);
+        policy.onReport("", abi.encode(address(bank), alice, p));
+    }
+
     function test_revoke_blocksFurtherDeposits() public {
         Bank bank = _charter();
         _attestDeposit(address(bank), alice, true, false);
