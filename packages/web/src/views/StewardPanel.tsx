@@ -16,6 +16,8 @@ import {
 } from "../lib/contracts";
 import {getBankMembers} from "../lib/events";
 import {getArcTreasurySwapQuote, type LifiQuote} from "../lib/lifi";
+import {useLedger} from "../ledger/LedgerProvider";
+import {clearSign} from "../ledger/erc7730";
 import {Money, Badge, Field, Notice, Toggle, useTx, TxButton, Section} from "../components";
 
 export function StewardPanel({bank, onChange, version}: {bank: BankInfo; onChange: () => void; version: number}) {
@@ -70,14 +72,17 @@ function MemberRoster({bank, version}: {bank: BankInfo; version: number}) {
 function CreditDesk({bank, onChange}: {bank: BankInfo; onChange: () => void}) {
   const wallet = useWallet();
   const tx = useTx();
+  const ledger = useLedger();
   const [member, setMember] = useState("");
   const [limit, setLimit] = useState("20000");
 
   async function open() {
-    await tx.run(
-      () => openCreditLine(wallet.walletClient!, bank.address, member.trim() as Address, toUsdc(limit || "0")),
-      "Credit line opened ✓",
-    );
+    await tx.run(async () => {
+      const m = member.trim() as Address;
+      const lim = toUsdc(limit || "0");
+      await ledger.requestApproval(clearSign.openCredit(bank.address, m, lim));
+      await openCreditLine(wallet.walletClient!, bank.address, m, lim);
+    }, "Credit line opened ✓");
     onChange();
   }
 
@@ -100,11 +105,16 @@ function CreditDesk({bank, onChange}: {bank: BankInfo; onChange: () => void}) {
 function TreasuryDesk({bank, onChange, version}: {bank: BankInfo; onChange: () => void; version: number}) {
   const wallet = useWallet();
   const tx = useTx();
+  const ledger = useLedger();
   const [amount, setAmount] = useState("50000");
   const shares = useAsync(() => strategyShares(bank.address, deployment.yieldVault), [bank.address, version]);
 
   async function allocate() {
-    await tx.run(() => allocateToStrategy(wallet.walletClient!, bank.address, deployment.yieldVault, toUsdc(amount || "0")), "Allocated to yield ✓");
+    await tx.run(async () => {
+      const amt = toUsdc(amount || "0");
+      await ledger.requestApproval(clearSign.allocate(bank.address, deployment.yieldVault, amt));
+      await allocateToStrategy(wallet.walletClient!, bank.address, deployment.yieldVault, amt);
+    }, "Allocated to yield ✓");
     shares.refresh();
     onChange();
   }
@@ -137,11 +147,20 @@ function TreasuryDesk({bank, onChange, version}: {bank: BankInfo; onChange: () =
 function ControlsCard({bank, onChange}: {bank: BankInfo; onChange: () => void}) {
   const wallet = useWallet();
   const tx = useTx();
+  const ledger = useLedger();
   const [products, setProducts] = useState<Products>(bank.products);
   const dirty = products.checking !== bank.products.checking || products.yield !== bank.products.yield || products.credit !== bank.products.credit;
 
   return (
     <Section title="Controls" icon="⚙️">
+      <div className="row between" style={{marginBottom: 6}}>
+        <Toggle on={ledger.enabled} onChange={ledger.setEnabled} label="Ledger-secured steward" />
+        <Badge tone={ledger.enabled ? "green" : "default"}>{ledger.enabled ? "device required" : "off"}</Badge>
+      </div>
+      <div className="hint" style={{marginBottom: 12}}>
+        When on, high-risk actions (credit, treasury, pause) require Clear-Signing approval on a Ledger device.
+      </div>
+      <div className="sep" />
       <div className="lbl muted" style={{fontSize: 13, marginBottom: 4}}>Products</div>
       <Toggle on={products.checking} onChange={(v) => setProducts({...products, checking: v})} label="Private checking" />
       <Toggle on={products.yield} onChange={(v) => setProducts({...products, yield: v})} label="Treasury yield" />
@@ -162,7 +181,14 @@ function ControlsCard({bank, onChange}: {bank: BankInfo; onChange: () => void}) 
       <div className="kv"><span className="k">Withdrawal delay</span><span className="val">{bank.risk.withdrawalDelay}s</span></div>
       <div className="row" style={{gap: 8, marginTop: 14}}>
         <TxButton
-          onClick={() => tx.run(() => setPaused(wallet.walletClient!, bank.address, !bank.paused), bank.paused ? "Resumed ✓" : "Paused ✓").then(onChange)}
+          onClick={() =>
+            tx
+              .run(async () => {
+                await ledger.requestApproval(clearSign.pause(bank.address, !bank.paused));
+                await setPaused(wallet.walletClient!, bank.address, !bank.paused);
+              }, bank.paused ? "Resumed ✓" : "Paused ✓")
+              .then(onChange)
+          }
           className={bank.paused ? "btn primary" : "btn danger"}
           pending={tx.pending}
         >
