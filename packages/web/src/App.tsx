@@ -9,10 +9,16 @@ import {WalletBar} from "./views/WalletBar";
 
 type View = "discover" | "operator";
 
+function initialBank(): Address | null {
+  if (typeof window === "undefined") return null;
+  const b = new URLSearchParams(window.location.search).get("bank");
+  return b && /^0x[0-9a-fA-F]{40}$/.test(b) ? (b as Address) : null;
+}
+
 export function App() {
   const wallet = useWallet();
   const [view, setView] = useState<View>("discover");
-  const [bank, setBank] = useState<Address | null>(null);
+  const [bank, setBank] = useState<Address | null>(initialBank);
 
   return (
     <div className="app">

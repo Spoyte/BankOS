@@ -13,7 +13,11 @@ export function BankDetail({bank, onBack}: {bank: Address; onBack: () => void}) 
   const bump = () => setVersion((v) => v + 1);
   const info = useAsync(() => getBankInfo(bank), [bank, version]);
   const isSteward = wallet.address && info.data && wallet.address.toLowerCase() === info.data.steward.toLowerCase();
-  const [tab, setTab] = useState<"member" | "steward">("member");
+  const initialTab =
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "steward"
+      ? "steward"
+      : "member";
+  const [tab, setTab] = useState<"member" | "steward">(initialTab);
 
   return (
     <div>

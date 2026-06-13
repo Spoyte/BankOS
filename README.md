@@ -3,96 +3,103 @@
 **Charter your own private, compliant, self-custodial stablecoin bank on Arc — in minutes.**
 
 Charter is a *bank factory*: infrastructure that lets any operator ("steward") launch a branded,
-rule-based stablecoin bank with **private balances** (Unlink), **programmable compliance** (Chainlink
-CRE), and **seamless onboarding** (Dynamic), settled in USDC on **Arc**. Members keep their own keys;
-the steward configures policy, never custody.
+rule-based stablecoin bank with **private balances** (Unlink), **programmable compliance**
+(Chainlink CRE), and **passkey onboarding** (Dynamic), settled in USDC on **Arc**. Members keep their
+own keys; the steward configures policy, never custody.
 
 > Not an FDIC-insured deposit bank. Charter is *banking infrastructure* / self-custodial bank rails.
 
+![Charter landing](docs/landing.png)
+
 ---
 
-## Why
+## The idea
 
-Community banking is dying while the need grows. The primitives to rebuild it now exist:
+Community banking is dying while the need grows. The primitives to rebuild it now exist — Charter
+composes them into one stack: **social trust on top, cryptographic guard-rails underneath.**
 
 | Layer | Sponsor | Role in Charter |
 |---|---|---|
-| **Private balance & execution** | **Unlink** | Members' checking balances and transfers live off the public ledger; treasury moves are shielded. |
-| **Compliance / policy** | **Chainlink CRE** | Confidential KYC / sanctions / eligibility run in a TEE; only the *decision* (a `Policy`) is attested on-chain. |
+| **Private balances & transfers** | **Unlink** | Members' checking balances and transfers live off the public ledger; treasury moves are shielded. |
+| **Compliance / policy** | **Chainlink CRE** | Confidential KYC / sanctions / eligibility in a TEE; only the *decision* (`Policy`) is attested on-chain. |
 | **Onboarding UX** | **Dynamic** | Passkey embedded wallets — members join a bank without installing MetaMask. |
-| **Settlement** | **Arc** | USDC-native L1; balances, fees, and credit are all denominated in dollars. |
-| **Treasury routing** *(stretch)* | **LI.FI** | Optional same-chain swap calldata for idle-reserve allocation (feature-flagged — see [ADR-001](docs/ADR-001-lifi-poc.md)). |
+| **Settlement** | **Arc** | USDC-native L1; balances, fees, and credit denominated in dollars. |
+| **Treasury routing** *(stretch)* | **LI.FI** | Optional same-chain Arc swap calldata for idle-reserve allocation — feature-flagged (see [ADR-001](docs/ADR-001-lifi-poc.md)). |
 
-The thesis: **social trust on top, cryptographic guard-rails underneath.**
+## What's built (all working)
 
----
-
-## Architecture
-
-```
-                ┌─────────────────────────────────────────────────────────────┐
-                │                       Web app (Dynamic)                        │
-                │   Operator console  ·  Member app  ·  Steward treasury desk    │
-                └───────────┬───────────────────────┬───────────────────────────┘
-                            │                        │
-              viem / wagmi  │                        │  @unlink-xyz/sdk
-                            ▼                        ▼
-   ┌──────────────────────────────────┐   ┌──────────────────────────────────┐
-   │            Arc (EVM L1)           │   │     Unlink engine (private)        │
-   │  CharterFactory → Bank (clones)   │   │  deposit · transfer · withdraw     │
-   │  PolicyRegistry · ExecutionRouter │   │  burner (private DeFi / yield)     │
-   │  MockUSDC · MockYieldVault        │   │  → shielded balances & notes       │
-   └───────────────▲──────────────────┘   └──────────────────────────────────┘
-                   │ attest() (state change)
-   ┌───────────────┴──────────────────┐
-   │   Chainlink CRE policy workflow   │  Confidential HTTP KYC/sanctions in a TEE,
-   │   + DON forwarder (attester)      │  lands a Policy on PolicyRegistry.
-   └──────────────────────────────────┘
-```
-
-**Five core contracts** (`packages/contracts`):
-
-- `CharterFactory` — charters new banks as minimal-proxy clones; registry of all banks.
-- `Bank` — per-bank: deposits, withdrawals (delay), policy-gated credit, treasury routing, risk caps,
-  pause, and the member→Unlink-account pointer for private checking.
-- `PolicyRegistry` — Chainlink-attested compliance outputs (`canDeposit`, `canBorrow`, tier,
-  jurisdiction, expiry). Only the DON forwarder can write.
-- `ExecutionRouter` — allow-list of `(target, selector)` pairs a steward may call for yield/treasury.
-- `RiskConfig` (in `CharterTypes`) — utilization caps, withdrawal delay, per-borrower limits.
-
-## Repo layout
-
-```
-packages/
-  contracts/      Foundry — the five contracts, mocks, 28-test suite, deploy script
-  shared/         chain config (Arc), ABIs, shared types (TS)
-  cre-policy/     Chainlink CRE compliance workflow + local DON simulator (attester)
-  unlink-engine/  Unlink integration + local engine emulator (runs offline)
-  web/            Vite + React app — Dynamic onboarding, operator + member + steward UIs
-scripts/
-  lifi-poc.mjs    LI.FI feasibility PoC (see ADR-001)
-  export-abis.mjs ABIs → shared
-  demo.sh         one-command end-to-end local demo
-```
+- **5 core contracts** + 2 mocks on solady — `CharterFactory · Bank · PolicyRegistry · ExecutionRouter
+  · PrivacyPool`. **35/35 Foundry tests pass.** Deploys to local Arc / Arc testnet.
+- **Chainlink CRE compliance** — a production CRE workflow (Confidential HTTP → `writeReport` →
+  `PolicyRegistry.onReport`) *and* a local DON simulator that lands real on-chain attestations.
+- **Unlink privacy** — real `@unlink-xyz/sdk` accounts (`unlink1…`, EdDSA, poseidon) over a shielded
+  ledger + on-chain `PrivacyPool`. CLI demo proves **shield → private transfer (hidden) → withdraw**.
+- **Dynamic-powered web app** — operator console, member app, steward treasury desk. Runs offline with
+  local personas, or flip one env var for real Dynamic embedded wallets.
+- **LI.FI PoC** — verified same-chain Arc routing; shipped as a feature-flagged stretch module.
 
 ## Quick start
 
 ```bash
 npm install
-npm run chain            # terminal 1: local Arc (anvil)
-npm run deploy:local     # deploy the stack, writes deployments/31337.json
-npm run abis             # export ABIs to shared
-npm run engine:dev       # terminal 2: local Unlink engine emulator
-npm run policy:dev       # terminal 3: Chainlink CRE policy service + attester
-npm run web:dev          # terminal 4: the app
+bash scripts/demo.sh          # boots anvil, deploys, starts CRE + Unlink services, seeds, runs the app
+# → open the printed web URL; pick a persona top-right
+bash scripts/demo.sh stop     # tear down
 ```
 
-Or the scripted demo: `npm run demo`.
+Or run pieces individually:
 
-## Status
+```bash
+npm run chain                 # local Arc (anvil) on :8545
+npm run deploy:local          # deploy + write deployments/31337.json
+npm run abis                  # export ABIs to shared
+npm run -w @charter/cre-policy dev      # Chainlink CRE policy service (:4001)
+npm run -w @charter/unlink-engine dev   # Unlink engine (:4002)
+npm run seed                  # charter a demo bank, onboard members, deposit, credit, yield
+npm run web:dev               # the app
+```
 
-- ✅ Contracts: 5 contracts + mocks, **28/28 tests pass**, deploys to local Arc.
-- ✅ LI.FI PoC complete → ship as feature-flagged stretch (ADR-001).
-- 🚧 CRE policy service, Unlink engine + integration, web app (in progress).
+Standalone proofs:
 
-See [`docs/ADR-001-lifi-poc.md`](docs/ADR-001-lifi-poc.md) for the LI.FI decision.
+```bash
+npm run lifi:poc                          # LI.FI Arc routing feasibility (ADR-001)
+npm run -w @charter/unlink-engine demo    # shield → private transfer → withdraw (privacy proof)
+npm run contracts:test                    # 35 Foundry tests
+```
+
+## Demo flow (90 seconds)
+
+1. **Steward** persona → *Operator* → charter "Brooklyn Mutual" (pick products + risk caps).
+2. **Dave (new member)** → open the bank → *Compliance* → submit KYC → the Chainlink CRE workflow
+   approves and an eligibility `Policy` is attested on-chain. (Try `country=KP` for a sanctions reject.)
+3. Dave deposits USDC (public checking) and **sets up a private account** → shields USDC → sends a
+   **private transfer** to another member (off-chain, hidden) → withdraws to a fresh address.
+4. **Steward desk** → open a credit line for a member, then route idle reserve into the allow-listed
+   yield vault — utilization and treasury guard-rails enforced on-chain.
+
+## Going to Arc testnet / production
+
+- Deploy with `USDC_ADDRESS=0x3600…0000` (Arc's canonical USDC) and `--rpc-url https://rpc.testnet.arc.network`.
+- Real onboarding: set `VITE_DYNAMIC_ENVIRONMENT_ID` (Dynamic dashboard, with Arc configured).
+- Real privacy: set `UNLINK_ENGINE_URL` + `UNLINK_API_KEY` (hosted Unlink engine) → `LiveUnlinkClient`.
+- Real compliance: `cre workflow simulate packages/cre-policy/workflow` then let Chainlink deploy it;
+  authorize the DON forwarder via `PolicyRegistry.setAttester(forwarder, true)`.
+
+## Repo layout
+
+```
+packages/
+  contracts/      Foundry — 5 contracts, mocks, 35-test suite, deploy script
+  shared/         Arc chain config, exported ABIs, shared TS types
+  cre-policy/     Chainlink CRE workflow + local DON simulator (attester) + seed
+  unlink-engine/  Unlink engine emulator + real-SDK client (Local + Live) + privacy demo
+  web/            Vite + React app (Dynamic onboarding, operator/member/steward UIs)
+scripts/          lifi-poc · export-abis · sync-web · demo.sh
+docs/             ARCHITECTURE.md · ADR-001 (LI.FI) · screenshots
+```
+
+## Docs
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layers, contracts, and end-to-end flows.
+- [`docs/ADR-001-lifi-poc.md`](docs/ADR-001-lifi-poc.md) — the LI.FI proof-of-concept + decision.
+- Per-package READMEs in `packages/*/README.md`.
