@@ -7,7 +7,7 @@ Date: 2026-06-13
 
 Claude's Charter project is stronger than GPT's original build on the sponsor-critical axis: it moves policy, banking state, privacy escrow, and treasury controls onto local EVM contracts with Foundry coverage. The architecture is a serious hackathon submission rather than a UI-first simulator.
 
-GPT has been improved based on this review: it now has USDC base-unit math, an Anvil smoke test, a Viem contract behavior runner with event/custom-error assertions, local deployment manifests, contract-backed API endpoints, a Local Contract Rail panel that reads and writes real deployed contracts, browser-visible deployment health/recovery state, a local PrivacyPool with commitment/nullifier checks, a signed local privacy ledger with SDK-derived accounts, EdDSA transfer/withdraw authorization, deployment-scoped JSON persistence, and a one-command health-checked local contract demo. Claude still remains ahead on Solidity-native test depth, durable multi-service orchestration, and event-replayed end-to-end privacy.
+GPT has been improved based on this review: it now has USDC base-unit math, an Anvil smoke test, a Viem contract behavior runner with event/custom-error assertions, local deployment manifests, contract-backed API endpoints, a Local Contract Rail panel that reads and writes real deployed contracts, browser-visible deployment health/recovery/reset state, a local PrivacyPool with commitment/nullifier checks, a signed local privacy ledger with SDK-derived accounts, EdDSA transfer/withdraw authorization, deployment-scoped JSON persistence, and a one-command health-checked local contract demo. Claude still remains ahead on Solidity-native test depth, durable multi-service orchestration, and event-replayed end-to-end privacy.
 
 ## What Claude Does Better
 
@@ -36,6 +36,7 @@ GPT has been improved based on this review: it now has USDC base-unit math, an A
 - Added a signed local privacy ledger with SDK-derived accounts, EdDSA transfer/withdraw checks, nonce replay rejection, JSON persistence, and signed relayer withdrawal through PrivacyPool.
 - Added deployment health checks and a one-command local contract demo script, borrowing the stale-service guardrail from Claude's `scripts/demo.sh`.
 - Added browser-visible deployment health/recovery state in the GPT contract rail, so missing manifests, dead RPCs, and failed bytecode checks are visible before running actions.
+- Added a browser/API reset path that redeploys and reseeds fresh local contracts on the active Anvil RPC without restarting API/web.
 - Tightened money handling to six-decimal USDC base units.
 - Added a roadmap that keeps the remaining privacy and CRE gaps explicit.
 
