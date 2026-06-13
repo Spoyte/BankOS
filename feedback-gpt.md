@@ -7,7 +7,7 @@ Date: 2026-06-14
 
 Claude's Charter project is stronger than GPT's original build on the sponsor-critical axis: it moves policy, banking state, privacy escrow, and treasury controls onto local EVM contracts with Foundry coverage. The architecture is a serious hackathon submission rather than a UI-first simulator.
 
-GPT has been improved based on this review: it now has USDC base-unit math, an Anvil smoke test, a Viem contract behavior runner with event/custom-error assertions, local deployment manifests, contract-backed API endpoints, a Local Contract Rail panel that reads and writes real deployed contracts, browser-visible deployment health/recovery/reset state, a local PrivacyPool with commitment/nullifier checks, a PrivacyOperationRecorder for signed-transfer events, a signed local privacy ledger with SDK-derived accounts, EdDSA transfer/withdraw authorization, event-backed deposit/transfer/withdraw reconciliation, a one-command health-checked local contract demo, and a workflow selector that routes the main member and signed privacy actions through live local contracts. Claude still remains ahead on Solidity-native test depth, durable multi-service orchestration, Ledger-gated stewardship, and hosted/full-event-replayed end-to-end privacy.
+GPT has been improved based on this review: it now has USDC base-unit math, an Anvil smoke test, a Viem contract behavior runner with event/custom-error assertions, local deployment manifests, contract-backed API endpoints, report-driven `PolicyRegistry` updates from `/api/policy/evaluate`, a Local Contract Rail panel that reads and writes real deployed contracts, browser-visible deployment health/recovery/reset state, a local PrivacyPool with commitment/nullifier checks, a PrivacyOperationRecorder for signed-transfer events, a signed local privacy ledger with SDK-derived accounts, EdDSA transfer/withdraw authorization, event-backed deposit/transfer/withdraw reconciliation, a one-command health-checked local contract demo, and a workflow selector that routes the main member and signed privacy actions through live local contracts. Claude still remains ahead on Solidity-native test depth, durable multi-service orchestration, Ledger-gated stewardship, and hosted/full-event-replayed end-to-end privacy.
 
 ## What Claude Does Better
 
@@ -32,6 +32,7 @@ GPT has been improved based on this review: it now has USDC base-unit math, an A
 - Added `npm run contracts:behavior` for policy, cap, steward, execution, credit, utilization, allowance, PrivacyPool failure-path checks, event payloads, and custom-error selectors.
 - Added `npm run contracts:deploy:local` and deployment manifests.
 - Added `GET /api/contracts/state` and `POST /api/contracts/*` endpoints for contract-mode reads/writes.
+- Folded contract-mode member policy through `/api/policy/evaluate`, so the policy form writes evaluated report hash, expiry, jurisdiction tag, borrow flag, and limit into `PolicyRegistry`.
 - Added a UI `Local Contract Rail` panel with live on-chain metrics and recent events.
 - Added a local `PrivacyPool.sol` and smoke coverage for duplicate commitments, relayer-only withdrawals, and nullifier replay rejection.
 - Added a signed local privacy ledger with SDK-derived accounts, EdDSA transfer/withdraw checks, nonce replay rejection, JSON persistence, and signed relayer withdrawal through PrivacyPool.
