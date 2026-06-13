@@ -1,0 +1,40 @@
+import {ARC_USDC_ERC20, ARC_EURC} from "@charter/shared";
+import type {Address} from "viem";
+
+/**
+ * LI.FI treasury routing — a feature-flagged stretch (see ADR-001). Fetches an executable same-chain
+ * swap quote on Arc; the returned calldata is what a steward would route through the Unlink burner to
+ * rebalance idle reserve privately. Disabled unless VITE_ENABLE_LIFI=true.
+ */
+export interface LifiQuote {
+  tool: string;
+  toAmount: string;
+  to: Address;
+  data: `0x${string}`;
+}
+
+export async function getArcTreasurySwapQuote(params: {
+  fromAddress: Address;
+  amount: bigint;
+  fromToken?: Address;
+  toToken?: Address;
+}): Promise<LifiQuote | null> {
+  const fromToken = params.fromToken ?? ARC_USDC_ERC20;
+  const toToken = params.toToken ?? ARC_EURC;
+  const url =
+    `https://li.quest/v1/quote?fromChain=5042002&toChain=5042002` +
+    `&fromToken=${fromToken}&toToken=${toToken}&fromAmount=${params.amount}&fromAddress=${params.fromAddress}`;
+  try {
+    const res = await fetch(url);
+    const j = await res.json();
+    if (!j.transactionRequest) return null;
+    return {
+      tool: j.tool,
+      toAmount: j.estimate?.toAmount ?? "0",
+      to: j.transactionRequest.to,
+      data: j.transactionRequest.data,
+    };
+  } catch {
+    return null;
+  }
+}

@@ -12,3 +12,5 @@ forge-cache/
 packages/contracts/lib/
 .vite/
 deployments/local.json
+packages/web/dist/
+packages/web/src/generated/

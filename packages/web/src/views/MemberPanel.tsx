@@ -1,0 +1,320 @@
+import {useState} from "react";
+import type {Address} from "viem";
+import {toUsdc} from "@charter/shared";
+import type {UnlinkClient} from "@charter/unlink-engine";
+import {useWallet} from "../wallet/WalletContext";
+import {useAsync, useNow} from "../hooks";
+import {
+  getMemberInfo,
+  getPolicy,
+  approveUsdc,
+  depositToBank,
+  registerMember,
+  requestWithdraw,
+  claimWithdraw,
+  cancelWithdraw,
+  borrow,
+  repay,
+  usdcAddress,
+} from "../lib/contracts";
+import {applyForPolicy} from "../lib/policy";
+import {getUnlinkClient} from "../lib/unlink";
+import type {BankInfo} from "../lib/contracts";
+import {Money, Badge, Field, Notice, useTx, TxButton, Section} from "../components";
+
+export function MemberPanel({bank, onChange, version}: {bank: BankInfo; onChange: () => void; version: number}) {
+  const wallet = useWallet();
+  const me = wallet.address!;
+  const policy = useAsync(() => getPolicy(bank.address, me), [bank.address, me, version]);
+  const member = useAsync(() => getMemberInfo(bank.address, me), [bank.address, me, version]);
+
+  const eligible = policy.data?.canDeposit && (policy.data.expiry === 0 || policy.data.expiry * 1000 > Date.now());
+
+  return (
+    <div className="grid cols-2" style={{alignItems: "start"}}>
+      <div>
+        <ComplianceCard bank={bank} policy={policy.data} onChange={() => {policy.refresh(); onChange();}} />
+        {eligible && bank.products.checking && (
+          <CheckingCard bank={bank} member={member} onChange={onChange} />
+        )}
+        {eligible && bank.products.credit && policy.data?.canBorrow && (
+          <CreditCard bank={bank} member={member} onChange={onChange} />
+        )}
+      </div>
+      <div>
+        <PrivateBalanceCard bank={bank} eligible={!!eligible} onChange={onChange} />
+      </div>
+    </div>
+  );
+}
+
+// ----------------------------------------------------------- compliance
+function ComplianceCard({bank, policy, onChange}: {bank: BankInfo; policy: any; onChange: () => void}) {
+  const wallet = useWallet();
+  const tx = useTx();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    fullName: "Alice Avery",
+    country: "US",
+    region: "NY",
+    dateOfBirth: "1990-04-01",
+    governmentIdHash: "id-hash-0xabc123",
+    requestsCredit: true,
+  });
+  const eligible = policy?.canDeposit && (policy.expiry === 0 || policy.expiry * 1000 > Date.now());
+
+  async function apply() {
+    await tx.run(async () => {
+      const res = await applyForPolicy(bank.address, wallet.address!, {...form, sanctionsConsent: true});
+      if (!res.approved) throw new Error(`Declined: ${res.reasons.join("; ")}`);
+    }, "Approved — eligibility attested on-chain ✓");
+    onChange();
+  }
+
+  return (
+    <Section title="Compliance" icon="✅">
+      {eligible ? (
+        <>
+          <div className="row" style={{gap: 8, marginBottom: 8}}>
+            <Badge tone="green">Eligible · tier {policy.tier}</Badge>
+            {policy.canBorrow && <Badge tone="brand">Credit cleared</Badge>}
+          </div>
+          <div className="kv"><span className="k">Jurisdiction</span><span className="val">{shortHex(policy.jurisdiction)}</span></div>
+          <div className="kv"><span className="k">Expires</span><span className="val">{policy.expiry ? new Date(policy.expiry * 1000).toLocaleDateString() : "never"}</span></div>
+          <div className="hint" style={{marginTop: 8}}>
+            Screened confidentially by the Chainlink CRE workflow. Only this policy is on-chain — never your PII.
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="muted" style={{marginTop: 0}}>
+            Submit KYC to the Chainlink CRE workflow to unlock deposits{bank.products.credit ? " and credit" : ""}.
+            Your data is screened confidentially; only an eligibility policy is written on-chain.
+          </p>
+          {!open ? (
+            <button className="btn primary" onClick={() => setOpen(true)}>
+              Start onboarding
+            </button>
+          ) : (
+            <>
+              <div className="grid cols-2" style={{gap: 10}}>
+                <Field label="Full name"><input value={form.fullName} onChange={(e) => setForm({...form, fullName: e.target.value})} /></Field>
+                <Field label="Country (ISO-2)"><input value={form.country} onChange={(e) => setForm({...form, country: e.target.value})} /></Field>
+                <Field label="Region"><input value={form.region} onChange={(e) => setForm({...form, region: e.target.value})} /></Field>
+                <Field label="Date of birth"><input value={form.dateOfBirth} onChange={(e) => setForm({...form, dateOfBirth: e.target.value})} /></Field>
+                <Field label="Gov. ID hash" hint="hash only — never the document"><input value={form.governmentIdHash} onChange={(e) => setForm({...form, governmentIdHash: e.target.value})} /></Field>
+              </div>
+              <TxButton onClick={apply} className="btn primary block" pending={tx.pending}>
+                Submit to CRE workflow
+              </TxButton>
+              <div className="hint">Try country=KP for a sanctioned-jurisdiction rejection.</div>
+            </>
+          )}
+        </>
+      )}
+      {tx.error && <Notice tone="err">{tx.error}</Notice>}
+      {tx.ok && <Notice tone="ok">{tx.ok}</Notice>}
+    </Section>
+  );
+}
+
+// ----------------------------------------------------------- public checking
+function CheckingCard({bank, member, onChange}: {bank: BankInfo; member: any; onChange: () => void}) {
+  const wallet = useWallet();
+  const tx = useTx();
+  const now = useNow();
+  const [amount, setAmount] = useState("1000");
+  const m = member.data;
+
+  async function deposit() {
+    const amt = toUsdc(amount || "0");
+    await tx.run(async () => {
+      await approveUsdc(wallet.walletClient!, bank.address, amt);
+      await depositToBank(wallet.walletClient!, bank.address, amt);
+    }, `Deposited ${amount} USDC ✓`);
+    member.refresh();
+    onChange();
+  }
+  async function withdraw() {
+    await tx.run(() => requestWithdraw(wallet.walletClient!, bank.address, toUsdc(amount || "0")), "Withdrawal requested ✓");
+    member.refresh();
+    onChange();
+  }
+
+  const pending = m?.pendingAmount > 0n;
+  const remaining = m ? m.pendingUnlockAt - now : 0;
+
+  return (
+    <Section title="Public checking" icon="💵">
+      <div className="kv"><span className="k">Your deposit balance</span><span className="val">{m ? <Money v={m.deposit} /> : "…"}</span></div>
+      <div className="inline-input" style={{marginTop: 12}}>
+        <input value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <TxButton onClick={deposit} className="btn primary" pending={tx.pending}>Deposit</TxButton>
+        <TxButton onClick={withdraw} className="btn" pending={tx.pending}>Request withdraw</TxButton>
+      </div>
+      {pending && (
+        <div className="card" style={{marginTop: 12, background: "var(--bg-elev)"}}>
+          <div className="row between">
+            <span>Pending withdrawal: <Money v={m.pendingAmount} /></span>
+            {remaining > 0 ? <Badge tone="amber">unlocks in {remaining}s</Badge> : <Badge tone="green">ready</Badge>}
+          </div>
+          <div className="row" style={{gap: 8, marginTop: 10}}>
+            <TxButton onClick={() => tx.run(() => claimWithdraw(wallet.walletClient!, bank.address), "Claimed ✓").then(() => {member.refresh(); onChange();})} className="btn primary sm" pending={tx.pending} disabled={remaining > 0}>Claim</TxButton>
+            <TxButton onClick={() => tx.run(() => cancelWithdraw(wallet.walletClient!, bank.address), "Cancelled ✓").then(() => {member.refresh(); onChange();})} className="btn sm" pending={tx.pending}>Cancel</TxButton>
+          </div>
+        </div>
+      )}
+      {tx.error && <Notice tone="err">{tx.error}</Notice>}
+      {tx.ok && <Notice tone="ok">{tx.ok}</Notice>}
+    </Section>
+  );
+}
+
+// ----------------------------------------------------------- credit
+function CreditCard({bank, member, onChange}: {bank: BankInfo; member: any; onChange: () => void}) {
+  const wallet = useWallet();
+  const tx = useTx();
+  const [amount, setAmount] = useState("1000");
+  const m = member.data;
+
+  async function doBorrow() {
+    await tx.run(() => borrow(wallet.walletClient!, bank.address, toUsdc(amount || "0")), "Borrowed ✓");
+    member.refresh();
+    onChange();
+  }
+  async function doRepay() {
+    const amt = toUsdc(amount || "0");
+    await tx.run(async () => {
+      await approveUsdc(wallet.walletClient!, bank.address, amt);
+      await repay(wallet.walletClient!, bank.address, wallet.address!, amt);
+    }, "Repaid ✓");
+    member.refresh();
+    onChange();
+  }
+
+  return (
+    <Section title="Credit line" icon="💳">
+      <div className="kv"><span className="k">Credit limit</span><span className="val">{m ? <Money v={m.creditLimit} /> : "…"}</span></div>
+      <div className="kv"><span className="k">Outstanding debt</span><span className="val">{m ? <Money v={m.debt} /> : "…"}</span></div>
+      <div className="kv"><span className="k">Available to draw</span><span className="val">{m ? <Money v={m.availableCredit} /> : "…"}</span></div>
+      {m && m.creditLimit === 0n && <div className="hint" style={{marginTop: 8}}>No line yet — ask the steward to open one.</div>}
+      <div className="inline-input" style={{marginTop: 12}}>
+        <input value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <TxButton onClick={doBorrow} className="btn primary" pending={tx.pending} disabled={!m || m.creditLimit === 0n}>Borrow</TxButton>
+        <TxButton onClick={doRepay} className="btn" pending={tx.pending} disabled={!m || m.debt === 0n}>Repay</TxButton>
+      </div>
+      {tx.error && <Notice tone="err">{tx.error}</Notice>}
+      {tx.ok && <Notice tone="ok">{tx.ok}</Notice>}
+    </Section>
+  );
+}
+
+// ----------------------------------------------------------- private (Unlink)
+function PrivateBalanceCard({bank, eligible, onChange}: {bank: BankInfo; eligible: boolean; onChange: () => void}) {
+  const wallet = useWallet();
+  const tx = useTx();
+  const [client, setClient] = useState<UnlinkClient | null>(null);
+  const [balance, setBalance] = useState<bigint>(0n);
+  const [shieldAmt, setShieldAmt] = useState("500");
+  const [xferAmt, setXferAmt] = useState("100");
+  const [xferTo, setXferTo] = useState("");
+  const [wdAmt, setWdAmt] = useState("100");
+  const [wdTo, setWdTo] = useState(wallet.address ?? "");
+
+  async function refreshBal(c: UnlinkClient) {
+    setBalance(await c.getBalance(usdcAddress));
+  }
+
+  async function setup() {
+    await tx.run(async () => {
+      const c = await getUnlinkClient(wallet.walletClient!, wallet.address!);
+      // ensure the bank knows this member's unlink pointer
+      try {
+        await registerMember(wallet.walletClient!, bank.address, c.getAddress());
+      } catch { /* already a member */ }
+      setClient(c);
+      await refreshBal(c);
+    }, "Private account ready ✓");
+    onChange();
+  }
+
+  async function shield() {
+    if (!client) return;
+    await tx.run(async () => {
+      await client.deposit(usdcAddress, toUsdc(shieldAmt || "0"));
+      await refreshBal(client);
+    }, `Shielded ${shieldAmt} USDC ✓`);
+  }
+  async function transfer() {
+    if (!client) return;
+    await tx.run(async () => {
+      await client.privateTransfer(usdcAddress, xferTo.trim(), toUsdc(xferAmt || "0"));
+      await refreshBal(client);
+    }, "Private transfer sent (off-chain, hidden) ✓");
+  }
+  async function withdraw() {
+    if (!client) return;
+    await tx.run(async () => {
+      await client.withdraw(usdcAddress, wdTo.trim() as Address, toUsdc(wdAmt || "0"));
+      await refreshBal(client);
+    }, "Withdrawn on-chain to address ✓");
+  }
+
+  return (
+    <Section title="Private balance" icon="🔒" action={<Badge tone="brand">Unlink</Badge>}>
+      {!eligible ? (
+        <div className="muted">Complete compliance to use private banking.</div>
+      ) : !client ? (
+        <>
+          <p className="muted" style={{marginTop: 0}}>
+            Derive a private Unlink account from your wallet. Balances and transfers stay off the public
+            ledger — only deposits and withdrawals touch the chain.
+          </p>
+          <TxButton onClick={setup} className="btn primary block" pending={tx.pending}>
+            Set up private account
+          </TxButton>
+        </>
+      ) : (
+        <>
+          <div className="stat" style={{marginBottom: 12}}>
+            <div className="v"><Money v={balance} /></div>
+            <div className="l">Private (shielded) balance</div>
+          </div>
+          <div className="kv">
+            <span className="k">Your unlink address</span>
+            <span className="val" title={client.getAddress()} style={{cursor: "copy"}} onClick={() => navigator.clipboard?.writeText(client.getAddress())}>
+              {client.getAddress().slice(0, 18)}… 📋
+            </span>
+          </div>
+
+          <div className="sep" />
+          <div className="lbl muted" style={{fontSize: 13}}>Shield USDC → private</div>
+          <div className="inline-input">
+            <input value={shieldAmt} onChange={(e) => setShieldAmt(e.target.value)} />
+            <TxButton onClick={shield} className="btn primary" pending={tx.pending}>Shield</TxButton>
+          </div>
+
+          <div className="lbl muted" style={{fontSize: 13, marginTop: 12}}>Private transfer <span className="private-tag">(hidden, off-chain)</span></div>
+          <Field label="" ><input placeholder="recipient unlink1… address" value={xferTo} onChange={(e) => setXferTo(e.target.value)} /></Field>
+          <div className="inline-input">
+            <input value={xferAmt} onChange={(e) => setXferAmt(e.target.value)} />
+            <TxButton onClick={transfer} className="btn primary" pending={tx.pending} disabled={!xferTo}>Send private</TxButton>
+          </div>
+
+          <div className="lbl muted" style={{fontSize: 13, marginTop: 12}}>Withdraw → EVM address</div>
+          <Field label=""><input placeholder="0x… recipient" value={wdTo} onChange={(e) => setWdTo(e.target.value)} /></Field>
+          <div className="inline-input">
+            <input value={wdAmt} onChange={(e) => setWdAmt(e.target.value)} />
+            <TxButton onClick={withdraw} className="btn" pending={tx.pending} disabled={!wdTo}>Withdraw</TxButton>
+          </div>
+        </>
+      )}
+      {tx.error && <Notice tone="err">{tx.error}</Notice>}
+      {tx.ok && <Notice tone="ok">{tx.ok}</Notice>}
+    </Section>
+  );
+}
+
+function shortHex(h?: string) {
+  return h ? `${h.slice(0, 10)}…${h.slice(-6)}` : "—";
+}
