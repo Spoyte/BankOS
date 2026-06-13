@@ -14,7 +14,8 @@
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "viem": "^2.52.2",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "@anthropic-ai/sdk": "^0.69.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

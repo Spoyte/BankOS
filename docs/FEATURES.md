@@ -28,4 +28,8 @@ exact Ledger AI-agent pattern.
   `redeemFromStrategy` tx.
 - Composes onto already-built rails: `ExecutionRouter` (allow-list), `Bank.allocateToStrategy` (action),
   the steward role (approver), and the `ledger/` Clear-Signing layer (now on by default).
-- Deterministic and offline-runnable; the proposal shape leaves a clean seam for an LLM-backed agent.
+- **Genuinely AI-backed (optional):** the numbers are computed deterministically (safe), and **Claude**
+  (`claude-opus-4-8` via `@anthropic-ai/sdk`, `packages/cre-policy/src/treasuryAgent.ts` →
+  `POST /agent/treasury`) reviews the proposal, grades risk, and writes the steward-facing rationale.
+  Activates when `ANTHROPIC_API_KEY` is set; falls back to the deterministic rationale offline — the app
+  stays fully runnable either way. The card shows a "Claude concurs/flags" badge when the review is live.

@@ -21,7 +21,7 @@ import {
 } from "../lib/contracts";
 import {getBankMembers} from "../lib/events";
 import {getArcTreasurySwapQuote, type LifiQuote} from "../lib/lifi";
-import {proposeTreasuryMove} from "../lib/treasuryAgent";
+import {proposeTreasuryMove, fetchClaudeReview} from "../lib/treasuryAgent";
 import {useLedger} from "../ledger/LedgerProvider";
 import {clearSign} from "../ledger/erc7730";
 import {Money, Badge, Field, Notice, Toggle, useTx, TxButton, Section} from "../components";
@@ -48,6 +48,9 @@ function TreasuryAgentCard({bank, onChange}: {bank: BankInfo; onChange: () => vo
   const ledger = useLedger();
   const tx = useTx();
   const proposal = proposeTreasuryMove(bank);
+  const review = useAsync(() => fetchClaudeReview(bank, proposal), [bank.address, proposal.action, proposal.amount.toString()]);
+  const rationale = review.data?.rationale ?? proposal.rationale;
+  const risk = review.data?.risk ?? proposal.risk;
   const toneByRisk = {low: "green", medium: "amber", high: "red"} as const;
 
   async function execute() {
@@ -67,13 +70,14 @@ function TreasuryAgentCard({bank, onChange}: {bank: BankInfo; onChange: () => vo
   }
 
   return (
-    <Section title="Treasury agent" icon="🤖" action={<Badge tone="brand">AI + Ledger</Badge>}>
+    <Section title="Treasury agent" icon="🤖" action={<Badge tone="brand">{review.data ? "Claude + Ledger" : "AI + Ledger"}</Badge>}>
       <div className="agent-headline">
         <div className="agent-avatar">◆</div>
         <div style={{flex: 1}}>
           <strong>{proposal.headline}</strong>
-          <div className="row" style={{gap: 6, marginTop: 4}}>
-            <Badge tone={toneByRisk[proposal.risk]}>{proposal.risk} risk</Badge>
+          <div className="row wrap" style={{gap: 6, marginTop: 4}}>
+            <Badge tone={toneByRisk[risk]}>{risk} risk</Badge>
+            {review.data && <Badge tone={review.data.concur ? "green" : "amber"}>Claude {review.data.concur ? "concurs" : "flags"}</Badge>}
             {proposal.requiresLedger && <Badge tone="brand">Ledger approval required</Badge>}
             {proposal.action !== "hold" && <Badge>{proposal.action} · {fromUsdc(proposal.amount)} USDC</Badge>}
           </div>
@@ -81,11 +85,12 @@ function TreasuryAgentCard({bank, onChange}: {bank: BankInfo; onChange: () => vo
       </div>
 
       <div className="agent-reasoning">
-        {proposal.rationale.map((r, i) => (
+        {rationale.map((r, i) => (
           <div className="agent-thought" key={i}>
             <span className="agent-bullet">›</span> {r}
           </div>
         ))}
+        {review.data?.note && <div className="hint" style={{marginTop: 6}}>Claude: {review.data.note}</div>}
       </div>
 
       {proposal.action !== "hold" && (

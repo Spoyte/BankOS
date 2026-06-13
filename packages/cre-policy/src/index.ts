@@ -4,6 +4,7 @@ import {z, ZodError} from "zod";
 import type {Address} from "viem";
 import {evaluateCompliance} from "./compliance.js";
 import {Attester} from "./attester.js";
+import {reviewTreasuryMove, agentEnabled, type AgentReviewInput} from "./treasuryAgent.js";
 
 const evmAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "invalid EVM address");
 const kycSchema = z.object({
@@ -97,6 +98,19 @@ app.get("/policy/:bank/:member", async (req, res) => {
   } catch (e: any) {
     if (badRequest(res, e)) return;
     res.status(500).json({error: e?.message ?? "internal error"});
+  }
+});
+
+// Claude-backed treasury-agent review (optional; falls back to deterministic if no API key).
+app.get("/agent/status", (_req, res) => res.json({claudeBacked: agentEnabled()}));
+
+app.post("/agent/treasury", async (req, res) => {
+  try {
+    const review = await reviewTreasuryMove(req.body as AgentReviewInput);
+    if (!review) return res.json({claudeBacked: false, review: null});
+    res.json({claudeBacked: true, review});
+  } catch (e: any) {
+    res.status(200).json({claudeBacked: false, review: null, error: e?.message});
   }
 });
 

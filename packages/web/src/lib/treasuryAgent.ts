@@ -1,5 +1,42 @@
 import {fromUsdc} from "@charter/shared";
 import type {BankInfo} from "./contracts";
+import {POLICY_URL} from "../config";
+
+export interface ClaudeReview {
+  rationale: string[];
+  risk: "low" | "medium" | "high";
+  concur: boolean;
+  note: string;
+}
+
+/** Optional Claude-backed review of the deterministic proposal. Returns null when the policy service
+ *  has no ANTHROPIC_API_KEY configured (the deterministic rationale is then used as-is). */
+export async function fetchClaudeReview(bank: BankInfo, proposal: TreasuryProposal): Promise<ClaudeReview | null> {
+  if (proposal.action === "hold") return null;
+  try {
+    const res = await fetch(`${POLICY_URL}/agent/treasury`, {
+      method: "POST",
+      headers: {"content-type": "application/json"},
+      body: JSON.stringify({
+        bankName: bank.name,
+        action: proposal.action,
+        amountUsdc: fromUsdc(proposal.amount),
+        state: {
+          deposits: fromUsdc(bank.totalDeposits),
+          idle: fromUsdc(bank.idleLiquidity),
+          deployed: fromUsdc(bank.strategyAssets),
+          pendingWithdrawals: fromUsdc(bank.totalPendingWithdraw),
+          utilizationPct: Number(bank.utilizationBps) / 100,
+          bufferTargetPct: 25,
+        },
+      }),
+    });
+    const json = await res.json();
+    return json.claudeBacked ? (json.review as ClaudeReview) : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Charter Treasury Agent — an autonomous policy engine that proposes how to deploy a bank's idle
