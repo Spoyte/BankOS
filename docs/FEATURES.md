@@ -6,7 +6,7 @@ Tracks the parent [`../../docs/FEATURE-IDEAS.md`](../../docs/FEATURE-IDEAS.md) a
 |---|---|---|
 | 1 | **AI treasury agent + Ledger human-in-the-loop** | ✅ shipped |
 | 2 | Private balance by default | ⬜ |
-| 3 | Yield-bearing deposits (steward spread) | 🟡 |
+| 3 | Yield-bearing deposits (steward spread) | ✅ shipped |
 | 4 | Cross-chain deposit via LI.FI | ⬜ |
 | 5 | Gasless onboarding (Dynamic AA/paymaster) | ⬜ |
 | 6 | Recurring private payments / payroll | ⬜ |

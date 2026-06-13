@@ -16,6 +16,8 @@ import {
   borrow,
   repay,
   usdcAddress,
+  savingsClaimable,
+  claimSavings,
 } from "../lib/contracts";
 import {applyForPolicy} from "../lib/policy";
 import {getUnlinkClient} from "../lib/unlink";
@@ -144,10 +146,27 @@ function CheckingCard({bank, member, onChange}: {bank: BankInfo; member: any; on
 
   const pending = m?.pendingAmount > 0n;
   const remaining = m ? m.pendingUnlockAt - now : 0;
+  const savings = useAsync(() => savingsClaimable(bank.address, wallet.address!), [bank.address, wallet.address, tx.ok]);
+
+  async function claim() {
+    await tx.run(() => claimSavings(wallet.walletClient!, bank.address), "Savings claimed ✓");
+    savings.refresh();
+    member.refresh();
+    onChange();
+  }
 
   return (
     <Section title="Public checking" icon="💵">
       <div className="kv"><span className="k">Your deposit balance</span><span className="val">{m ? <Money v={m.deposit} /> : "…"}</span></div>
+      <div className="kv">
+        <span className="k">Earned savings (yield) <span className="private-tag">APY</span></span>
+        <span className="val">
+          {savings.data !== undefined ? <Money v={savings.data} /> : "…"}
+          {savings.data !== undefined && savings.data > 0n && (
+            <button className="btn primary sm" style={{marginLeft: 8}} onClick={claim} disabled={tx.pending}>Claim</button>
+          )}
+        </span>
+      </div>
       <div className="inline-input" style={{marginTop: 12}}>
         <input value={amount} onChange={(e) => setAmount(e.target.value)} />
         <TxButton onClick={deposit} className="btn primary" pending={tx.pending}>Deposit</TxButton>

@@ -433,6 +433,96 @@ contract TreasuryTest is CharterTestBase {
     }
 }
 
+contract YieldBearingTest is CharterTestBase {
+    Bank bank;
+
+    function setUp() public override {
+        super.setUp();
+        bank = _charter();
+        _attestDeposit(address(bank), alice, true, false);
+        _attestDeposit(address(bank), bob, true, false);
+        vm.startPrank(alice);
+        usdc.approve(address(bank), type(uint256).max);
+        bank.deposit(100_000 * USDC);
+        vm.stopPrank();
+        vm.startPrank(bob);
+        usdc.approve(address(bank), type(uint256).max);
+        bank.deposit(50_000 * USDC);
+        vm.stopPrank();
+    }
+
+    function test_harvest_distributesYieldProRataMinusSpread() public {
+        vm.prank(steward);
+        bank.setStewardSpread(1000); // 10%
+        vm.prank(steward);
+        bank.allocateToStrategy(address(vault), 100_000 * USDC);
+        vault.accrue(10_000 * USDC); // 10k gain
+
+        vm.prank(steward);
+        uint256 distributed = bank.harvestYield(address(vault));
+        assertApproxEqAbs(distributed, 9_000 * USDC, 2 * USDC); // 10k - 10% spread
+        assertApproxEqAbs(bank.stewardFeesAccrued(), 1_000 * USDC, 2 * USDC);
+
+        // pro-rata: alice has 2/3 of deposits, bob 1/3
+        assertApproxEqAbs(bank.savingsClaimable(alice), 6_000 * USDC, 2 * USDC);
+        assertApproxEqAbs(bank.savingsClaimable(bob), 3_000 * USDC, 2 * USDC);
+        // principal stays deployed (~100k still in the vault)
+        assertApproxEqAbs(bank.strategyAssets(), 100_000 * USDC, 5 * USDC);
+    }
+
+    function test_members_and_steward_claim() public {
+        vm.prank(steward);
+        bank.setStewardSpread(1000);
+        vm.prank(steward);
+        bank.allocateToStrategy(address(vault), 100_000 * USDC);
+        vault.accrue(10_000 * USDC);
+        vm.prank(steward);
+        bank.harvestYield(address(vault));
+
+        uint256 aliceBefore = usdc.balanceOf(alice);
+        vm.prank(alice);
+        bank.claimSavings();
+        assertApproxEqAbs(usdc.balanceOf(alice) - aliceBefore, 6_000 * USDC, 2 * USDC);
+        assertEq(bank.savingsClaimable(alice), 0);
+
+        uint256 stewardBefore = usdc.balanceOf(steward);
+        vm.prank(steward);
+        bank.claimStewardFees();
+        assertApproxEqAbs(usdc.balanceOf(steward) - stewardBefore, 1_000 * USDC, 2 * USDC);
+    }
+
+    function test_newDepositorDoesNotGetPastYield() public {
+        address carol = makeAddr("carol");
+        vm.prank(steward);
+        bank.allocateToStrategy(address(vault), 100_000 * USDC);
+        vault.accrue(9_000 * USDC);
+        vm.prank(steward);
+        bank.harvestYield(address(vault));
+        // carol joins AFTER the harvest
+        _attestDeposit(address(bank), carol, true, false);
+        usdc.mint(carol, 10_000 * USDC);
+        vm.startPrank(carol);
+        usdc.approve(address(bank), type(uint256).max);
+        bank.deposit(10_000 * USDC);
+        vm.stopPrank();
+        assertEq(bank.savingsClaimable(carol), 0); // no retroactive yield
+    }
+
+    function test_setStewardSpread_capped() public {
+        vm.prank(steward);
+        vm.expectRevert("spread too high");
+        bank.setStewardSpread(6000);
+    }
+
+    function test_harvest_revertsWithoutGain() public {
+        vm.prank(steward);
+        bank.allocateToStrategy(address(vault), 50_000 * USDC);
+        vm.prank(steward);
+        vm.expectRevert(Bank.ZeroAmount.selector); // no gain above cost basis
+        bank.harvestYield(address(vault));
+    }
+}
+
 contract PauseTest is CharterTestBase {
     function test_pause_blocksDeposits() public {
         Bank bank = _charter();

@@ -12,6 +12,11 @@ import {
   configureProducts,
   strategyShares,
   getPolicy,
+  harvestYield,
+  setStewardSpread,
+  claimStewardFees,
+  stewardFees,
+  stewardSpreadBps,
   type BankInfo,
 } from "../lib/contracts";
 import {getBankMembers} from "../lib/events";
@@ -170,7 +175,10 @@ function TreasuryDesk({bank, onChange, version}: {bank: BankInfo; onChange: () =
   const tx = useTx();
   const ledger = useLedger();
   const [amount, setAmount] = useState("50000");
-  const shares = useAsync(() => strategyShares(bank.address, deployment.yieldVault), [bank.address, version]);
+  const [spread, setSpread] = useState("");
+  const shares = useAsync(() => strategyShares(bank.address, deployment.yieldVault), [bank.address, version, tx.ok]);
+  const fees = useAsync(() => stewardFees(bank.address), [bank.address, version, tx.ok]);
+  const spreadBps = useAsync(() => stewardSpreadBps(bank.address), [bank.address, version, tx.ok]);
 
   async function allocate() {
     await tx.run(async () => {
@@ -187,19 +195,43 @@ function TreasuryDesk({bank, onChange, version}: {bank: BankInfo; onChange: () =
     shares.refresh();
     onChange();
   }
+  async function harvest() {
+    await tx.run(() => harvestYield(wallet.walletClient!, bank.address, deployment.yieldVault), "Yield harvested → distributed to depositors ✓");
+    onChange();
+  }
+  async function saveSpread() {
+    await tx.run(() => setStewardSpread(wallet.walletClient!, bank.address, Math.round(Number(spread) * 100)), "Spread updated ✓");
+  }
+  async function claimFees() {
+    await tx.run(() => claimStewardFees(wallet.walletClient!, bank.address), "Fees claimed ✓");
+    onChange();
+  }
 
   return (
     <Section title="Treasury yield" icon="📈" action={<Badge>guard-railed</Badge>}>
       <div className="kv"><span className="k">Idle reserve</span><span className="val"><Money v={bank.idleLiquidity} /></span></div>
       <div className="kv"><span className="k">In strategies</span><span className="val"><Money v={bank.strategyAssets} /></span></div>
       <div className="kv"><span className="k">Vault shares held</span><span className="val">{shares.data !== undefined ? fromUsdc(shares.data) : "…"}</span></div>
-      <div className="hint" style={{margin: "8px 0"}}>
-        Only strategies allow-listed in ExecutionRouter can be called. Vault: {deployment.yieldVault.slice(0, 10)}…
-      </div>
-      <div className="inline-input">
+      <div className="inline-input" style={{marginTop: 8}}>
         <input value={amount} onChange={(e) => setAmount(e.target.value)} />
         <TxButton onClick={allocate} className="btn primary" pending={tx.pending} disabled={!bank.products.yield}>Allocate</TxButton>
         <TxButton onClick={redeem} className="btn" pending={tx.pending} disabled={!shares.data}>Redeem all</TxButton>
+      </div>
+
+      <div className="sep" />
+      <div className="lbl muted" style={{fontSize: 13}}>Yield-bearing deposits</div>
+      <div className="kv"><span className="k">Steward spread</span><span className="val">{spreadBps.data !== undefined ? `${spreadBps.data / 100}%` : "…"}</span></div>
+      <div className="kv"><span className="k">Your accrued fees</span><span className="val">{fees.data !== undefined ? <Money v={fees.data} /> : "…"}</span></div>
+      <div className="inline-input" style={{marginTop: 8}}>
+        <input placeholder="spread %" value={spread} onChange={(e) => setSpread(e.target.value)} />
+        <TxButton onClick={saveSpread} className="btn" pending={tx.pending} disabled={!spread}>Set spread</TxButton>
+      </div>
+      <div className="row" style={{gap: 8, marginTop: 8}}>
+        <TxButton onClick={harvest} className="btn primary" pending={tx.pending} disabled={!shares.data}>Harvest → depositors</TxButton>
+        <TxButton onClick={claimFees} className="btn" pending={tx.pending} disabled={!fees.data}>Claim fees</TxButton>
+      </div>
+      <div className="hint" style={{marginTop: 6}}>
+        Harvest skims only the yield (principal stays deployed), takes your spread, and distributes the rest pro-rata to depositors.
       </div>
       {tx.error && <Notice tone="err">{tx.error}</Notice>}
       {tx.ok && <Notice tone="ok">{tx.ok}</Notice>}

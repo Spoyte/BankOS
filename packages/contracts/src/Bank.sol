@@ -63,6 +63,16 @@ contract Bank is ReentrancyGuard {
     address[] public strategies;
     mapping(address => bool) private _isStrategy;
     mapping(address => uint256) public sharesOf; // bank's ERC-4626 shares per strategy
+    mapping(address => uint256) public costBasisOf; // assets put into a strategy, net of cost redeemed
+
+    // yield-bearing deposits: harvested strategy yield is distributed pro-rata to depositors via an
+    // accumulator index, minus a steward spread. Members claim their accrued savings on demand.
+    uint16 public stewardSpreadBps; // steward's cut of harvested yield (e.g. 1000 = 10%)
+    uint256 public yieldAccPerToken; // 1e18-scaled distributable yield per unit of deposit
+    uint256 public stewardFeesAccrued; // steward's claimable yield cut
+    mapping(address => uint256) public savingsOf; // settled yield owed to a member
+    mapping(address => uint256) private _userYieldAcc; // member's snapshot of yieldAccPerToken
+    uint256 private constant ACC = 1e18;
 
     // ----------------------------------------------------------------- events
     event Initialized(address indexed steward, string name, address asset);
@@ -91,6 +101,11 @@ contract Bank is ReentrancyGuard {
     event StrategyAllocated(address indexed strategy, uint256 assets, uint256 shares);
     event StrategyRedeemed(address indexed strategy, uint256 shares, uint256 assets);
     event PrivateNoteAnchored(address indexed member, bytes32 commitment);
+
+    event StewardSpreadSet(uint16 bps);
+    event YieldHarvested(address indexed strategy, uint256 yieldAmount, uint256 stewardFee, uint256 distributed);
+    event SavingsClaimed(address indexed member, uint256 amount);
+    event StewardFeesClaimed(uint256 amount);
 
     // ----------------------------------------------------------------- errors
     error AlreadyInitialized();
@@ -197,10 +212,21 @@ contract Bank is ReentrancyGuard {
     }
 
     // ----------------------------------------------------------------- deposits / withdrawals
+    /// @dev Settle a member's accrued yield into `savingsOf` before their deposit balance changes.
+    function _settle(address member) internal {
+        uint256 acc = yieldAccPerToken;
+        uint256 delta = acc - _userYieldAcc[member];
+        if (delta != 0 && depositOf[member] != 0) {
+            savingsOf[member] += (depositOf[member] * delta) / ACC;
+        }
+        _userYieldAcc[member] = acc;
+    }
+
     function deposit(uint256 amount) external nonReentrant notPaused {
         if (amount == 0) revert ZeroAmount();
         if (!products.checking) revert ProductDisabled();
         if (!policyRegistry.isEligibleToDeposit(address(this), msg.sender)) revert NotEligible();
+        _settle(msg.sender);
 
         uint256 newMemberBal = depositOf[msg.sender] + amount;
         if (risk.maxDepositPerMember != 0 && newMemberBal > risk.maxDepositPerMember) revert CapExceeded();
@@ -219,6 +245,7 @@ contract Bank is ReentrancyGuard {
     function requestWithdraw(uint256 amount) external nonReentrant {
         if (amount == 0) revert ZeroAmount();
         if (depositOf[msg.sender] < amount) revert InsufficientBalance();
+        _settle(msg.sender);
 
         depositOf[msg.sender] -= amount;
         totalDeposits -= amount;
@@ -250,6 +277,7 @@ contract Bank is ReentrancyGuard {
         PendingWithdrawal storage w = pendingWithdrawalOf[msg.sender];
         uint256 amount = w.amount;
         if (amount == 0) revert NothingPending();
+        _settle(msg.sender);
         w.amount = 0;
         w.unlockAt = 0;
         totalPendingWithdraw -= amount;
@@ -316,6 +344,7 @@ contract Bank is ReentrancyGuard {
         asset.safeApprove(vault, assets);
         uint256 shares = IERC4626(vault).deposit(assets, address(this));
         sharesOf[vault] += shares;
+        costBasisOf[vault] += assets;
         if (!_isStrategy[vault]) {
             _isStrategy[vault] = true;
             strategies.push(vault);
@@ -326,12 +355,81 @@ contract Bank is ReentrancyGuard {
     /// @notice Redeem strategy shares back into reserve.
     function redeemFromStrategy(address vault, uint256 shares) external onlySteward nonReentrant {
         if (shares == 0) revert ZeroAmount();
-        if (sharesOf[vault] < shares) revert InsufficientBalance();
+        uint256 held = sharesOf[vault];
+        if (held < shares) revert InsufficientBalance();
         executionRouter.checkSelector(vault, IERC4626.redeem.selector);
 
-        sharesOf[vault] -= shares;
+        // reduce cost basis proportionally to the shares redeemed
+        uint256 costPortion = (costBasisOf[vault] * shares) / held;
+        costBasisOf[vault] -= costPortion;
+        sharesOf[vault] = held - shares;
         uint256 assets = IERC4626(vault).redeem(shares, address(this), address(this));
         emit StrategyRedeemed(vault, shares, assets);
+    }
+
+    /// @notice Steward's cut of harvested yield (bps, max 50%).
+    function setStewardSpread(uint16 bps) external onlySteward {
+        require(bps <= 5000, "spread too high");
+        stewardSpreadBps = bps;
+        emit StewardSpreadSet(bps);
+    }
+
+    /// @notice Harvest a strategy's accrued yield (only the gain above cost basis), take the steward
+    ///         spread, and distribute the rest pro-rata to depositors via the accumulator index. The
+    ///         deployed principal stays invested.
+    function harvestYield(address vault) external onlySteward nonReentrant returns (uint256 distributed) {
+        executionRouter.checkSelector(vault, IERC4626.redeem.selector);
+        uint256 held = sharesOf[vault];
+        if (held == 0) revert InsufficientBalance();
+        uint256 value = IERC4626(vault).convertToAssets(held);
+        uint256 basis = costBasisOf[vault];
+        if (value <= basis) revert ZeroAmount(); // no gain to harvest
+        uint256 gain = value - basis;
+
+        // redeem only the shares representing the gain; principal stays deployed
+        uint256 sharesToRedeem = (gain * held) / value;
+        if (sharesToRedeem == 0) revert ZeroAmount();
+        sharesOf[vault] = held - sharesToRedeem;
+        uint256 assetsOut = IERC4626(vault).redeem(sharesToRedeem, address(this), address(this));
+
+        uint256 fee = (assetsOut * stewardSpreadBps) / 10_000;
+        stewardFeesAccrued += fee;
+        distributed = assetsOut - fee;
+        if (totalDeposits != 0) {
+            yieldAccPerToken += (distributed * ACC) / totalDeposits;
+        } else {
+            // no depositors to credit — route the remainder to the steward too
+            stewardFeesAccrued += distributed;
+            distributed = 0;
+        }
+        emit YieldHarvested(vault, gain, fee, distributed);
+    }
+
+    /// @notice Member claims their accrued savings (distributed yield) into their wallet.
+    function claimSavings() external nonReentrant returns (uint256 amount) {
+        _settle(msg.sender);
+        amount = savingsOf[msg.sender];
+        if (amount == 0) revert NothingPending();
+        if (idleLiquidity() < amount) revert InsufficientLiquidity();
+        savingsOf[msg.sender] = 0;
+        asset.safeTransfer(msg.sender, amount);
+        emit SavingsClaimed(msg.sender, amount);
+    }
+
+    /// @notice Steward claims their accrued yield spread.
+    function claimStewardFees() external onlySteward nonReentrant returns (uint256 amount) {
+        amount = stewardFeesAccrued;
+        if (amount == 0) revert NothingPending();
+        if (idleLiquidity() < amount) revert InsufficientLiquidity();
+        stewardFeesAccrued = 0;
+        asset.safeTransfer(steward, amount);
+        emit StewardFeesClaimed(amount);
+    }
+
+    /// @notice Total savings (distributed yield) currently claimable by `member`.
+    function savingsClaimable(address member) external view returns (uint256) {
+        uint256 delta = yieldAccPerToken - _userYieldAcc[member];
+        return savingsOf[member] + (depositOf[member] * delta) / ACC;
     }
 
     // ----------------------------------------------------------------- views

@@ -153,6 +153,16 @@ export async function strategyShares(bank: Address, vault: Address): Promise<big
   return (await read(bank, abis.Bank, "sharesOf", [vault])) as bigint;
 }
 
+export async function savingsClaimable(bank: Address, member: Address): Promise<bigint> {
+  return (await read(bank, abis.Bank, "savingsClaimable", [member])) as bigint;
+}
+export async function stewardFees(bank: Address): Promise<bigint> {
+  return (await read(bank, abis.Bank, "stewardFeesAccrued")) as bigint;
+}
+export async function stewardSpreadBps(bank: Address): Promise<number> {
+  return Number(await read(bank, abis.Bank, "stewardSpreadBps"));
+}
+
 // ------------------------------------------------------------------ writes
 export const charterBank = (wc: WalletClient, p: {name: string; brandURI: string; products: Products; risk: RiskConfig}) =>
   send(wc, factory, abis.CharterFactory, "charterBank", [
@@ -192,6 +202,14 @@ export const allocateToStrategy = (wc: WalletClient, bank: Address, vault: Addre
   send(wc, bank, abis.Bank, "allocateToStrategy", [vault, amount]);
 export const redeemFromStrategy = (wc: WalletClient, bank: Address, vault: Address, shares: bigint) =>
   send(wc, bank, abis.Bank, "redeemFromStrategy", [vault, shares]);
+export const harvestYield = (wc: WalletClient, bank: Address, vault: Address) =>
+  send(wc, bank, abis.Bank, "harvestYield", [vault]);
+export const setStewardSpread = (wc: WalletClient, bank: Address, bps: number) =>
+  send(wc, bank, abis.Bank, "setStewardSpread", [bps]);
+export const claimSavings = (wc: WalletClient, bank: Address) =>
+  send(wc, bank, abis.Bank, "claimSavings", []);
+export const claimStewardFees = (wc: WalletClient, bank: Address) =>
+  send(wc, bank, abis.Bank, "claimStewardFees", []);
 export const setPaused = (wc: WalletClient, bank: Address, paused: boolean) =>
   send(wc, bank, abis.Bank, "setPaused", [paused]);
 export const configureProducts = (wc: WalletClient, bank: Address, p: Products) =>
