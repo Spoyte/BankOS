@@ -18,3 +18,8 @@ packages/web/src/generated/
 .demo-pids
 
 .anvil/
+
+# secrets (never commit)
+.secrets/
+*.key
+arc-deployer*
