@@ -68,6 +68,28 @@ export const clearSign = {
     ];
     return {contract: bank, functionName: "openCreditLine(address,uint256)", intent: "Extend a credit line to a member", fields, raw: descriptor(bank, "openCreditLine(address,uint256)", "Open credit line", fields)};
   },
+  setStewardSpread(bank: Address, bps: number): ClearSignView {
+    const fields = [
+      {label: "Bank", value: bank},
+      {label: "New steward spread", value: `${bps / 100}% of harvested yield`},
+    ];
+    return {contract: bank, functionName: "setStewardSpread(uint16)", intent: "Change the steward's yield spread", fields, raw: descriptor(bank, "setStewardSpread(uint16)", "Set steward spread", fields)};
+  },
+  harvest(bank: Address, vault: Address): ClearSignView {
+    const fields = [
+      {label: "Bank", value: bank},
+      {label: "Strategy vault", value: vault},
+      {label: "Action", value: "Harvest yield → distribute to depositors (minus spread)"},
+    ];
+    return {contract: bank, functionName: "harvestYield(address)", intent: "Harvest strategy yield and distribute to depositors", fields, raw: descriptor(bank, "harvestYield(address)", "Harvest yield", fields)};
+  },
+  claimStewardFees(bank: Address, amountApprox: bigint): ClearSignView {
+    const fields = [
+      {label: "Bank", value: bank},
+      {label: "Amount", value: `${fromUsdc(amountApprox)} USDC to the steward`},
+    ];
+    return {contract: bank, functionName: "claimStewardFees()", intent: "Claim accrued steward fees", fields, raw: descriptor(bank, "claimStewardFees()", "Claim steward fees", fields)};
+  },
   configureRisk(bank: Address, r: {globalDepositCap: bigint; maxCreditPerBorrower: bigint; maxUtilizationBps: number}): ClearSignView {
     const fields = [
       {label: "Bank", value: bank},

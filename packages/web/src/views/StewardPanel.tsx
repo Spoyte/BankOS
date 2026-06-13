@@ -196,19 +196,32 @@ function TreasuryDesk({bank, onChange, version}: {bank: BankInfo; onChange: () =
   }
   async function redeem() {
     if (!shares.data) return;
-    await tx.run(() => redeemFromStrategy(wallet.walletClient!, bank.address, deployment.yieldVault, shares.data!), "Redeemed from yield ✓");
+    await tx.run(async () => {
+      await ledger.requestApproval(clearSign.redeem(bank.address, deployment.yieldVault, shares.data!, bank.strategyAssets));
+      await redeemFromStrategy(wallet.walletClient!, bank.address, deployment.yieldVault, shares.data!);
+    }, "Redeemed from yield ✓");
     shares.refresh();
     onChange();
   }
   async function harvest() {
-    await tx.run(() => harvestYield(wallet.walletClient!, bank.address, deployment.yieldVault), "Yield harvested → distributed to depositors ✓");
+    await tx.run(async () => {
+      await ledger.requestApproval(clearSign.harvest(bank.address, deployment.yieldVault));
+      await harvestYield(wallet.walletClient!, bank.address, deployment.yieldVault);
+    }, "Yield harvested → distributed to depositors ✓");
     onChange();
   }
   async function saveSpread() {
-    await tx.run(() => setStewardSpread(wallet.walletClient!, bank.address, Math.round(Number(spread) * 100)), "Spread updated ✓");
+    const bps = Math.round(Number(spread) * 100);
+    await tx.run(async () => {
+      await ledger.requestApproval(clearSign.setStewardSpread(bank.address, bps));
+      await setStewardSpread(wallet.walletClient!, bank.address, bps);
+    }, "Spread updated ✓");
   }
   async function claimFees() {
-    await tx.run(() => claimStewardFees(wallet.walletClient!, bank.address), "Fees claimed ✓");
+    await tx.run(async () => {
+      await ledger.requestApproval(clearSign.claimStewardFees(bank.address, fees.data ?? 0n));
+      await claimStewardFees(wallet.walletClient!, bank.address);
+    }, "Fees claimed ✓");
     onChange();
   }
 

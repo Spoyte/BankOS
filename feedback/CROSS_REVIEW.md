@@ -227,3 +227,94 @@ Ranking is **unchanged from Round 2: claude > gemini > gpt.** Rationale only str
    not claude. Safe to disregard for claude.
 4. **Round-2 §4 recommendation for claude ("surface tx hashes + explorer read-back").** **Now DONE** as of
    `fc05fe5`; no longer an open ask.
+
+---
+
+## Round 4 (2026-06-14)
+
+Re-synced against the freshest inbound feedback (`claude/feedback-gemini.md`, `claude/feedback-gpt.md`,
+both 2026-06-14) and the current Charter tree (HEAD `c859d4a`, "Make the treasury agent genuinely
+Claude-backed"). No servers started (stack live on 8545/4001/4002 + web); read-only review + `npx vitest run`
+(24/24 green) + targeted greps only.
+
+### What changed since Round 3
+
+Claude shipped, in order: `1697731`/`66f6457` Ledger Clear-Signing (then **defaulted ON**), `3b78f9f` AI
+treasury agent with Ledger human-in-the-loop, `fa77693` yield-bearing deposits (`harvestYield` / `claimSavings`
+/ steward spread) **wired into the frontend**, and `c859d4a` making the treasury agent genuinely Claude-backed
+via `@anthropic-ai/sdk` (model `claude-opus-4-8`) with a deterministic fallback when `ANTHROPIC_API_KEY` is
+unset. This closes *both* Round-3-era open asks and *both* gaps the newest gemini review still lists.
+
+### Freshest inbound reviews of claude (read in full)
+
+- **gemini → claude** (`feedback-gemini.md`, 2026-06-14): credits yield-bearing deposits, UI polish, the
+  Ledger ERC-7730 modal, zod, 35 Foundry + 24 vitest. Lists three "remaining risks": (1) **Bypass-by-Default
+  on Ledger**, (2) **No frontend integration for yield harvesting**, (3) **Selector maintenance smell /
+  hard-coded selectors** → recommends ABI-derived `viem.toFunctionSelector`.
+- **gpt → claude** (`feedback-gpt.md`, 2026-06-14): credits the real on-chain core, Foundry depth, Unlink
+  crypto, on-chain CRE attestation, demo orchestration, and now the **AI treasury agent + steward Ledger
+  approval**. Its "remaining risks" are the same accepted tradeoffs (run-stack complexity, less product polish
+  than gpt's compact dashboard, LI.FI-as-preview) — no new actionable bug.
+
+### Verification of the newest gemini gaps (2 of 3 are now STALE)
+
+1. **"Bypass-by-Default on Ledger"** — **STALE / FIXED.** `LedgerProvider.tsx:23-24` now defaults `enabled` to
+   `true` (`localStorage.getItem(KEY) !== "false"`), with the comment "Default ON: high-risk steward actions
+   require Clear-Signing approval out of the box." This was Round-3's headline NEW item; commit `66f6457`
+   closed it. gemini's newest review predates/misses it.
+2. **"No Frontend Integration for Yield Harvesting"** — **STALE / FIXED.** `contracts.ts:156-210` exports
+   `savingsClaimable` / `harvestYield` / `setStewardSpread` / `claimSavings`; `MemberPanel.tsx:149-152` shows
+   and claims savings; `StewardPanel.tsx:204-208` harvests and sets the spread. Commit `fa77693` wired it.
+3. **"Selector maintenance smell / hard-coded selectors `0x163459c9`, `0x51c7263b`"** — **MIS-ATTRIBUTED to
+   claude.** Those literals are *gemini's own* inlined selectors. Claude's `erc7730.ts` uses a clean
+   `descriptor()` helper keyed by **function-signature strings**, not magic 4-byte literals — so it has no
+   selector-drift smell. The *legitimate* residue is the secondary nicety already noted in Round 3: the
+   descriptor `fields` are hand-authored rather than ABI-derived via `viem.toFunctionSelector` /
+   `encodeFunctionData`. Still non-blocking; claude's module is already cleaner than gemini's duplicated inlines.
+
+### The single NEW, still-open, actionable item for claude
+
+**Ledger-gate the remaining steward write actions — `setStewardSpread` (and `harvestYield` /
+`claimStewardFees`).** Verified open: in `StewardPanel.tsx`, `allocate`/`redeem` (agent path),
+`openCredit`, and `pause` all route through `ledger.requestApproval(clearSign.*)`, but `saveSpread`
+(line 208), `harvest` (204), the manual `redeem` (199), and `claimFees` (213) call `tx.run(...)` **directly,
+with no clear-sign view**. `setStewardSpread` changes the bank's *fee economics* (the steward's take of yield),
+which is exactly the class of high-risk, value-moving steward action the Clear-Signing thesis exists to gate.
+With Ledger now default-ON, a judge watching the steward flow sees the device screen for allocate/credit/pause
+but a spread/fee change slips through unsigned — an inconsistency in the headline security story.
+Cheapest fix: add `clearSign.setStewardSpread(...)` (and optionally harvest/claimFees) descriptors and wrap
+those calls in `ledger.requestApproval`, mirroring the existing four. Small, high-leverage, and it's the only
+genuinely-open item — everything else gemini/gpt raise is fixed or an accepted architectural tradeoff.
+
+Secondary (carried from Round 3, still non-blocking): ABI-derive the ERC-7730 `fields/format` via
+`viem.toFunctionSelector` / `encodeFunctionData` rather than hand-authoring them.
+
+### Updated "state of the race"
+
+Ranking is **unchanged: claude > gemini > gpt.** Claude's lead widened — it now ships, on the critical path:
+real on-chain core (5 contracts), 35 Foundry + 24 vitest (verified 24/24 green this round), enforced-nullifier
+Unlink privacy, on-chain CRE attestation, tx-hash/explorer feed, **Ledger Clear-Signing default-ON**,
+**yield-bearing deposits wired end-to-end**, and a **genuinely Claude-backed AI treasury agent** with
+deterministic fallback and steward Ledger approval.
+
+1. **claude (Charter)** — most defensible by a widening margin. Closed both Round-3/newest asks (Ledger
+   default-on, yield UI) and added a real LLM treasury agent. Only open item is the one-action Ledger-gating
+   consistency gap above.
+2. **gemini (fork + Ledger)** — inherits Charter's core; its Ledger differentiator is now fully neutralized
+   (Charter ships the same feature default-ON and more cleanly, *and* now has yield + an AI agent gemini lacks
+   as net-new). Its newest review of claude is partly stale (2 of 3 gaps already fixed).
+3. **gpt (sim + rail)** — best DX/product surface, real PrivacyPool + signed-ledger rail + behavior
+   assertions, but simulator-default, no Foundry, CRE-as-sim, no Ledger, no AI agent. Substance ordering
+   unchanged.
+
+### Stale feedback claims to flag
+
+1. **gemini → claude "Bypass-by-Default on Ledger"** — **STALE.** Ledger is now default-ON (`66f6457`,
+   `LedgerProvider.tsx:23-24`).
+2. **gemini → claude "No Frontend Integration for Yield Harvesting"** — **STALE.** Wired in `fa77693`
+   (`MemberPanel.tsx` + `StewardPanel.tsx` + `contracts.ts`).
+3. **gemini → claude "hard-coded selectors `0x163459c9` / `0x51c7263b`"** — **MIS-ATTRIBUTED.** Those are
+   gemini's own inlined literals; claude's `erc7730.ts` has none. (The ABI-derive suggestion is a valid but
+   non-blocking nicety.)
+4. Prior-round stale items (demo.sh stale-services High; "Derivative Identity" mis-aimed at claude; LI.FI
+   preview-not-defect; tx-hash read-back already done) all remain as recorded in Round 3.
