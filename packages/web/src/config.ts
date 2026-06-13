@@ -15,3 +15,9 @@ export const DYNAMIC_ENV_ID = import.meta.env.VITE_DYNAMIC_ENVIRONMENT_ID as str
 export const ENABLE_LIFI = import.meta.env.VITE_ENABLE_LIFI === "true";
 
 export const isLocal = CHAIN_ID === 31337;
+
+/** Block-explorer URL for a tx (e.g. arcscan on Arc testnet), or undefined on local anvil. */
+export function txUrl(hash: string): string | undefined {
+  const base = chain.blockExplorers?.default?.url;
+  return base ? `${base}/tx/${hash}` : undefined;
+}

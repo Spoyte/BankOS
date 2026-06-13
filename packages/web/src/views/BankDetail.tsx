@@ -4,6 +4,7 @@ import {useWallet} from "../wallet/WalletContext";
 import {useAsync} from "../hooks";
 import {getBankInfo} from "../lib/contracts";
 import {getBankActivity} from "../lib/events";
+import {txUrl} from "../config";
 import {Money, Badge, BankLogo, Stat, Notice, Section} from "../components";
 import {MemberPanel} from "./MemberPanel";
 import {StewardPanel} from "./StewardPanel";
@@ -99,10 +100,32 @@ function ActivityFeed({bank, version}: {bank: Address; version: number}) {
           </span>
           <span className="val">
             {a.amount ? `${a.amount} USDC` : ""}
-            <span className="faint" style={{marginLeft: 8, fontSize: 11}}>#{a.blockNumber.toString()}</span>
+            <TxLink hash={a.txHash} block={a.blockNumber} />
           </span>
         </div>
       ))}
     </Section>
+  );
+}
+
+/** Show a tx as an explorer link (Arc testnet) or a copyable hash + block # (local anvil). */
+function TxLink({hash, block}: {hash: `0x${string}`; block: bigint}) {
+  const url = txUrl(hash);
+  if (url) {
+    return (
+      <a className="faint mono" style={{marginLeft: 8, fontSize: 11}} href={url} target="_blank" rel="noreferrer" title={hash}>
+        tx ↗ #{block.toString()}
+      </a>
+    );
+  }
+  return (
+    <span
+      className="faint mono"
+      style={{marginLeft: 8, fontSize: 11, cursor: "copy"}}
+      title={`${hash} — click to copy`}
+      onClick={() => navigator.clipboard?.writeText(hash)}
+    >
+      {hash.slice(0, 8)}… #{block.toString()}
+    </span>
   );
 }
