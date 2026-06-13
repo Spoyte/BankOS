@@ -18,7 +18,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ todo · �groups what needs 
 | # | Item | Status |
 |---|---|---|
 | 7 | **JS/TS unit tests** — engine ledger (EdDSA/nonce/nullifier) + compliance brain | ✅ (24 tests) |
-| 8 | **zod validation** at policy + engine API boundaries | ⬜ |
+| 8 | **zod validation** at policy + engine API boundaries | ✅ |
 | 9 | **"Recent activity" feed** in the UI (on-chain events via `getLogs`) | ⬜ |
 | 10 | `anvil --state` persistence for restart-safe local demos | ⬜ |
 | 11 | Optional **SIM mode** (no anvil) for zero-dependency first run | ⬜ |

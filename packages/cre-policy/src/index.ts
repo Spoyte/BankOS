@@ -1,8 +1,31 @@
 import express from "express";
 import cors from "cors";
+import {z, ZodError} from "zod";
 import type {Address} from "viem";
-import {evaluateCompliance, type KycPayload} from "./compliance.js";
+import {evaluateCompliance} from "./compliance.js";
 import {Attester} from "./attester.js";
+
+const evmAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "invalid EVM address");
+const kycSchema = z.object({
+  fullName: z.string().min(1).max(120),
+  country: z.string().min(2).max(8),
+  region: z.string().max(16).optional(),
+  dateOfBirth: z.string().min(4).max(32),
+  governmentIdHash: z.string().max(200).optional(),
+  sanctionsConsent: z.boolean(),
+  requestsCredit: z.boolean().optional(),
+});
+const applySchema = z.object({bank: evmAddress, member: evmAddress, kyc: kycSchema});
+const bankMemberSchema = z.object({bank: evmAddress, member: evmAddress});
+const bankMemberParams = z.object({bank: evmAddress, member: evmAddress});
+
+function badRequest(res: express.Response, e: unknown): boolean {
+  if (e instanceof ZodError) {
+    res.status(400).json({error: "invalid request", issues: e.issues.map((i) => `${i.path.join(".")}: ${i.message}`)});
+    return true;
+  }
+  return false;
+}
 
 /**
  * Charter Policy Service — the local stand-in for the Chainlink CRE compliance DON.
@@ -34,10 +57,7 @@ app.get("/health", (_req, res) => {
 
 app.post("/apply", async (req, res) => {
   try {
-    const {bank, member, kyc} = req.body as {bank: Address; member: Address; kyc: KycPayload};
-    if (!bank || !member || !kyc) {
-      return res.status(400).json({error: "bank, member and kyc are required"});
-    }
+    const {bank, member, kyc} = applySchema.parse(req.body);
 
     // 1. confidential compliance evaluation (PII stays in-process / in-enclave)
     const decision = evaluateCompliance(kyc);
@@ -63,6 +83,7 @@ app.post("/apply", async (req, res) => {
       txHash,
     });
   } catch (e: any) {
+    if (badRequest(res, e)) return;
     console.error("[apply] error", e?.message ?? e);
     return res.status(500).json({error: e?.message ?? "internal error"});
   }
@@ -70,19 +91,22 @@ app.post("/apply", async (req, res) => {
 
 app.get("/policy/:bank/:member", async (req, res) => {
   try {
-    const policy = await attester.getPolicy(req.params.bank as Address, req.params.member as Address);
+    const {bank, member} = bankMemberParams.parse(req.params);
+    const policy = await attester.getPolicy(bank as Address, member as Address);
     res.json({policy});
   } catch (e: any) {
+    if (badRequest(res, e)) return;
     res.status(500).json({error: e?.message ?? "internal error"});
   }
 });
 
 app.post("/revoke", async (req, res) => {
   try {
-    const {bank, member} = req.body as {bank: Address; member: Address};
-    const txHash = await attester.revoke(bank, member);
+    const {bank, member} = bankMemberSchema.parse(req.body);
+    const txHash = await attester.revoke(bank as Address, member as Address);
     res.json({revoked: true, txHash});
   } catch (e: any) {
+    if (badRequest(res, e)) return;
     res.status(500).json({error: e?.message ?? "internal error"});
   }
 });
