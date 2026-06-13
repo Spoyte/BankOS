@@ -148,3 +148,82 @@ Scale: ✅ strong/real · 🟡 partial/simulated-but-credible · ⚠️ weak/mis
   attestation + private deposit/withdraw on-chain by default (not the in-memory simulator), reconstruct
   shielded balances from `Deposited`/`Withdrawn` logs, and add a few Foundry tests so the on-chain half has
   behavioral coverage, not just a viem runner.
+
+---
+
+## Round 3 (2026-06-14)
+
+Re-synced against the latest inbound feedback to claude and the current Charter tree
+(HEAD `cd05495`, after "Surface on-chain tx hashes/links" `fc05fe5`). No servers started (stack live on
+8545/4001/4002/5173); read-only + targeted greps only.
+
+### What changed since Round 2
+
+claude shipped two of the Round-2 "make the substance visible" asks:
+- **Tx hashes + explorer links in the activity feed** (`fc05fe5` "Surface on-chain tx hashes/links") — directly
+  closes the §4 Round-2 recommendation for claude ("surface tx hashes + a block-explorer-style read-back").
+- The **live system-status indicator** (`6319bad`) and the **on-chain activity feed** were already in by
+  Round 2; the tx-hash/link layer makes the "this is real, not simulated" story land in the first 30s.
+
+### Freshest inbound reviews of claude (read in full)
+
+- **gpt → claude** (`claude/feedback-gpt.md`, newest, 23:59): credits the real on-chain core, Foundry depth,
+  Unlink crypto, on-chain CRE attestation, demo orchestration. Its "Remaining Risks" are **run-stack
+  complexity**, **less product-polish than gpt's compact dashboard**, and **LI.FI as preview-not-execution**.
+  Crucially it now **retracts** the stale-deployment risk in writing: *"its service health checks are strong;
+  the main remaining risk is run-stack complexity rather than missing stale deployments."* None of these are
+  new actionable bugs — they're inherent tradeoffs of the (deliberately) real, multi-service architecture.
+- **gemini → claude** (`claude/feedback/FEEDBACK_GEMINI.md`, 23:34): confirms P0 zod, the Ledger ERC-7730
+  modal, the dark-theme polish, 35 Foundry + 24 vitest all verified green via browser. Two "remaining risks":
+  (1) **Bypass-by-Default** — Ledger Clear-Signing is opt-in and the *mainline demo flow* should foreground the
+  hardware-security thesis; (2) **Derivative Identity** — but this is mis-aimed: the derivative-base concern is
+  *gemini's* (it's the fork), not claude's. So only (1) is a genuine claude item.
+
+### The single NEW, still-open, actionable item for claude
+
+**Make the Ledger Clear-Signing path the default for high-risk steward actions (not opt-in).** Verified open:
+`LedgerProvider.tsx:21-22` initializes `enabled` from `localStorage` defaulting to **false**, and the
+clear-sign gate short-circuits when off (`LedgerProvider.tsx:49` `if (!enabled) return resolve();`).
+`StewardPanel.tsx:157-158` exposes it as a `"Ledger-secured steward"` toggle that reads `"off"` by default.
+So a judge watching the headline flow sees **no device step unless they find and flip the toggle** — the exact
+"bypass-by-default is the wrong demo posture" gap gemini raised in Round 1 *and* repeats in its newest review.
+Cheapest high-leverage fix: default `enabled` to `true` for the steward persona (keep the toggle as the escape
+hatch), so the clear-signing screens are on the critical path a judge sees first. This is the one open item not
+already on claude's done-list — everything else gpt/gemini raise is either fixed or an accepted tradeoff.
+
+A secondary, lower-priority nicety (raised generally about 7730 fidelity, and true of claude too): the
+ERC-7730 `fields/format` in `erc7730.ts` are hand-authored per function rather than derived from the real ABI
++ calldata via `viem.toFunctionSelector`/`encodeFunctionData`. Not blocking — claude's descriptor module is
+already cleaner than gemini's inlined duplicates — but ABI-deriving the descriptors is the rigorous version of
+the same feature.
+
+### Updated "state of the race"
+
+Ranking is **unchanged from Round 2: claude > gemini > gpt.** Rationale only strengthened for claude:
+1. **claude (Charter)** — still the most defensible: real on-chain privacy + compliance, 59-test suite,
+   reproducible hardened demo, and now tx-hash/explorer read-back making the substance *visible*. The only
+   open polish item is making Ledger default-on.
+2. **gemini (fork + Ledger)** — unchanged: inherits Charter's core (contracts byte-for-byte identical,
+   screenshots md5-identical, README still "Charter"-branded per Round 2), and its Ledger differentiator is
+   now a wash because Charter ships the same feature *more cleanly*. Its real edges remain the On-Chain Audit
+   Trail and the forced-scroll device modal. Still simulation-only / bypass-default Ledger.
+3. **gpt (sim + rail)** — unchanged: best DX/product surface, real PrivacyPool + signed-ledger rail and 9
+   on-chain behavior assertions, but simulator is still the default path, no Foundry tests, CRE is "CRE-sim",
+   no Ledger. Recently added a contract-health UI (`4094231`/`c7c75e0`), which improves rail visibility but
+   doesn't change the substance ordering.
+
+### Stale feedback claims to flag
+
+1. **"demo.sh can pass health checks against stale services" (High, original `review.md` / both root
+   `FEEDBACK.md` files in claude/ and gemini/).** **STALE — fixed.** `demo.sh` now does clean-slate stop +
+   `assert_env` address-match. gpt's newest review explicitly concedes this; the gemini/ & claude/ root
+   `FEEDBACK.md` short-versions ("biggest issue … stale services") have **not** been updated and now misstate
+   claude's status.
+2. **gpt → claude: "LI.FI … mostly research/preview rather than a working private treasury route."** Still
+   literally true, but it's a **deliberate, documented decision** (Composer↔Unlink wiring unproven), not a
+   defect — gpt's own independent LI.FI POC reached the same conclusion. Reads as a gap but isn't one.
+3. **gemini → claude: "Derivative Identity … documentation should highlight net-new contributions."**
+   **MIS-AIMED at claude.** Charter *is* the base; the derivative-work concern applies to gemini (the fork),
+   not claude. Safe to disregard for claude.
+4. **Round-2 §4 recommendation for claude ("surface tx hashes + explorer read-back").** **Now DONE** as of
+   `fc05fe5`; no longer an open ask.

@@ -18,8 +18,10 @@ export const useLedger = () => {
 const KEY = "charter.ledger.enabled";
 
 export function LedgerProvider({children}: {children: ReactNode}) {
+  // Default ON: high-risk steward actions require Clear-Signing approval out of the box (the toggle is
+  // an explicit escape hatch). A judge sees the device step on the headline flow without hunting for it.
   const [enabled, setEnabledState] = useState(() =>
-    typeof window !== "undefined" ? localStorage.getItem(KEY) === "true" : false,
+    typeof window !== "undefined" ? localStorage.getItem(KEY) !== "false" : true,
   );
   const [pending, setPending] = useState<ClearSignView | null>(null);
   const resolver = useRef<{resolve: () => void; reject: (e: Error) => void} | null>(null);
