@@ -14,3 +14,5 @@ packages/contracts/lib/
 deployments/local.json
 packages/web/dist/
 packages/web/src/generated/
+
+.demo-pids
