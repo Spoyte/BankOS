@@ -24,7 +24,7 @@ composes them into one stack: **social trust on top, cryptographic guard-rails u
 | **Compliance / policy** | **Chainlink CRE** | Confidential KYC / sanctions / eligibility in a TEE; only the *decision* (`Policy`) is attested on-chain. |
 | **Onboarding UX** | **Dynamic** | Passkey embedded wallets — members join a bank without installing MetaMask. |
 | **Settlement** | **Arc** | USDC-native L1; balances, fees, and credit denominated in dollars. |
-| **Treasury routing** *(stretch)* | **LI.FI** | Optional same-chain Arc swap calldata for idle-reserve allocation — feature-flagged (see [ADR-001](docs/ADR-001-lifi-poc.md)). |
+| **Treasury routing** *(stretch)* | **LI.FI** | Same-chain Arc swap-calldata **preview** for idle-reserve routing (execution through the Unlink burner is not yet wired) — feature-flagged (see [ADR-001](docs/ADR-001-lifi-poc.md)). |
 
 ## What's built (all working)
 
@@ -36,7 +36,8 @@ composes them into one stack: **social trust on top, cryptographic guard-rails u
   ledger + on-chain `PrivacyPool`. CLI demo proves **shield → private transfer (hidden) → withdraw**.
 - **Dynamic-powered web app** — operator console, member app, steward treasury desk. Runs offline with
   local personas, or flip one env var for real Dynamic embedded wallets.
-- **LI.FI PoC** — verified same-chain Arc routing; shipped as a feature-flagged stretch module.
+- **LI.FI PoC** — verified same-chain Arc routing; shipped as a feature-flagged *route-preview* module
+  (calldata preview only; burner execution not yet wired).
 
 ## Quick start
 
@@ -62,10 +63,15 @@ npm run web:dev               # the app
 Standalone proofs:
 
 ```bash
+npm run verify                            # contracts tests + web typecheck + web build, one command
 npm run lifi:poc                          # LI.FI Arc routing feasibility (ADR-001)
 npm run -w @charter/unlink-engine demo    # shield → private transfer → withdraw (privacy proof)
 npm run contracts:test                    # 35 Foundry tests
 ```
+
+> Running the privacy demo standalone? Make sure the engine isn't serving a **stale deployment**: run
+> `bash scripts/demo.sh stop` first, or just use `bash scripts/demo.sh` (it always starts from a clean
+> deployment and verifies each service's `/info/environment` matches before proceeding).
 
 ## Demo flow (90 seconds)
 

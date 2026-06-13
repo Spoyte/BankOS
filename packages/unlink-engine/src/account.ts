@@ -51,9 +51,17 @@ export function depositCommitment(masterPublicKey: bigint, amount: bigint, blind
   return `0x${c.toString(16).padStart(64, "0")}` as `0x${string}`;
 }
 
-/** Deterministic on-chain nullifier (bytes32) for a withdrawal. */
+/** Globally-unique on-chain nullifier (bytes32) for a withdrawal.
+ *
+ *  Authorization is carried by the EdDSA-signed `withdrawMessage` (recipient/amount/nonce); the
+ *  nullifier only needs to be a unique on-chain replay marker. We add a random salt so the value can
+ *  never collide with the PrivacyPool's *persistent* nullifier set across engine restarts (the engine's
+ *  in-memory nonce resets to 0 on restart, but the pool remembers spent nullifiers). */
 export function withdrawNullifier(unlinkAddress: string, nonce: bigint): `0x${string}` {
-  return keccak256(toHex(stringToBytes(`${unlinkAddress}:${nonce}`)));
+  const salt = new Uint8Array(16);
+  crypto.getRandomValues(salt);
+  const saltHex = Array.from(salt, (b) => b.toString(16).padStart(2, "0")).join("");
+  return keccak256(toHex(stringToBytes(`${unlinkAddress}:${nonce}:${saltHex}`)));
 }
 
 export async function sign(spendingPrivateKey: bigint, message: bigint): Promise<EdDSASignature> {

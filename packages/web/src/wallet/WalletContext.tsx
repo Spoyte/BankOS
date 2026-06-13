@@ -1,9 +1,13 @@
-import {createContext, useContext, useMemo, useState, type ReactNode} from "react";
+import {createContext, lazy, Suspense, useContext, useMemo, useState, type ReactNode} from "react";
 import {createPublicClient, createWalletClient, http, type PublicClient} from "viem";
 import {privateKeyToAccount} from "viem/accounts";
 import {chain, RPC_URL, DYNAMIC_ENV_ID} from "../config";
 import {LOCAL_ACCOUNTS, type WalletState} from "./types";
-import {DynamicWalletProvider} from "./DynamicWallet";
+
+// Lazy-loaded so the default local-persona build never eagerly bundles the (large) Dynamic SDK.
+const DynamicWalletProvider = lazy(() =>
+  import("./DynamicWallet").then((m) => ({default: m.DynamicWalletProvider})),
+);
 
 const WalletContext = createContext<WalletState | null>(null);
 
@@ -51,9 +55,11 @@ function LocalWalletProvider({children}: {children: ReactNode}) {
 export function WalletProvider({children}: {children: ReactNode}) {
   if (DYNAMIC_ENV_ID) {
     return (
-      <DynamicWalletProvider context={WalletContext} publicClient={publicClient}>
-        {children}
-      </DynamicWalletProvider>
+      <Suspense fallback={<div className="app"><div className="card muted">Loading wallet…</div></div>}>
+        <DynamicWalletProvider context={WalletContext} publicClient={publicClient}>
+          {children}
+        </DynamicWalletProvider>
+      </Suspense>
     );
   }
   return <LocalWalletProvider>{children}</LocalWalletProvider>;

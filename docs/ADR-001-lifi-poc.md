@@ -35,10 +35,12 @@ Run with `node scripts/lifi-poc.mjs` (live calls to `li.quest`). Findings on 202
 - **Build the core WITHOUT a hard LI.FI dependency.** Core treasury allocation uses the on-chain
   `ExecutionRouter` allow-list + a local `MockYieldVault` (ERC-4626) so the demo is deterministic and
   offline-capable.
-- **Ship LI.FI as a working, feature-flagged "Treasury Routing" stretch module** (`packages/web/src/lib/lifi.ts`,
-  toggled by `VITE_ENABLE_LIFI`). It calls the live quote API for a same-chain Arc swap and composes the
-  returned calldata into the Unlink burner flow. This unlocks optional LI.FI prize coverage *without*
-  putting the mainline demo at the mercy of an external API or unreleased SDK.
+- **Ship LI.FI as a feature-flagged "Treasury Routing" *preview* module** (`packages/web/src/lib/lifi.ts`,
+  toggled by `VITE_ENABLE_LIFI`). It calls the live quote API for a same-chain Arc swap and **previews** the
+  returned executable calldata (tool, est. output, router). The calldata is shaped to be wrapped by an
+  Unlink burner (`fundFromPool → swap → depositToPool`), **but that execution path is not yet wired** — the
+  module is a route preview only. This keeps the mainline demo off the critical path of an external API or
+  unreleased SDK while leaving a clear seam for the burner execution to be added later.
 - Revisit cross-chain funding (CCTP/Composer) post-hackathon when Arc-testnet cross-chain liquidity exists.
 
 ## Consequence for the architecture

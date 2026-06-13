@@ -145,8 +145,9 @@ function LifiCard({bank}: {bank: BankInfo}) {
   return (
     <Section title="LI.FI treasury route" icon="🛣️" action={<Badge tone="amber">stretch</Badge>}>
       <p className="muted" style={{marginTop: 0}}>
-        Preview an executable same-chain Arc swap (USDC→EURC). The calldata composes into the Unlink
-        burner to rebalance idle reserve privately (see ADR-001).
+        Preview an executable same-chain Arc swap (USDC→EURC). The calldata is shaped for the Unlink
+        burner to rebalance idle reserve privately — this is a route preview; burner execution isn't
+        wired yet (see ADR-001).
       </p>
       <div className="inline-input">
         <input value={amount} onChange={(e) => setAmount(e.target.value)} />

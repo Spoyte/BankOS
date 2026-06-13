@@ -3,8 +3,10 @@ import type {Address} from "viem";
 
 /**
  * LI.FI treasury routing — a feature-flagged stretch (see ADR-001). Fetches an executable same-chain
- * swap quote on Arc; the returned calldata is what a steward would route through the Unlink burner to
- * rebalance idle reserve privately. Disabled unless VITE_ENABLE_LIFI=true.
+ * swap quote on Arc and returns its calldata for **preview only**. The calldata is shaped to be wrapped
+ * by an Unlink burner (fundFromPool → swap → depositToPool) to rebalance idle reserve privately, but that
+ * execution path is not wired here — this module previews the route, it does not execute it.
+ * Disabled unless VITE_ENABLE_LIFI=true.
  */
 export interface LifiQuote {
   tool: string;
