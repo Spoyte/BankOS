@@ -6,6 +6,7 @@ import {Discover} from "./views/Discover";
 import {Operator} from "./views/Operator";
 import {BankDetail} from "./views/BankDetail";
 import {WalletBar} from "./views/WalletBar";
+import {SystemStatus} from "./views/SystemStatus";
 
 type View = "discover" | "operator";
 
@@ -35,6 +36,7 @@ export function App() {
           </button>
         </div>
         <div className="spacer" />
+        <SystemStatus />
         <WalletBar />
       </nav>
 

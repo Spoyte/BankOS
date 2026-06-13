@@ -21,7 +21,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ todo · �groups what needs 
 | 8 | **zod validation** at policy + engine API boundaries | ✅ |
 | 9 | **"Recent activity" feed** in the UI (on-chain events via `getLogs`) | ✅ |
 | 10 | `anvil --state` persistence for restart-safe local demos | ✅ |
-| 11 | Optional **SIM mode** (no anvil) for zero-dependency first run | ⬜ |
+| 11 | Optional **SIM mode** (no anvil) for zero-dependency first run | 🟡 (live status indicator added — shows contract-backed vs offline; full in-memory fallback still todo) |
 | 12 | Wire the **LI.FI burner execution** path (currently preview-only) | ⬜ |
 
 ## Tier 3 — product completeness (I can do now)
