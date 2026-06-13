@@ -7,7 +7,7 @@ Date: 2026-06-13
 
 Claude's Charter project is stronger than GPT's original build on the sponsor-critical axis: it moves policy, banking state, privacy escrow, and treasury controls onto local EVM contracts with Foundry coverage. The architecture is a serious hackathon submission rather than a UI-first simulator.
 
-GPT has been improved based on this review: it now has USDC base-unit math, an Anvil smoke test, local deployment manifests, contract-backed API endpoints, a Local Contract Rail panel that reads and writes real deployed contracts, a local PrivacyPool with commitment/nullifier checks, a signed local privacy ledger with SDK-derived accounts, EdDSA transfer/withdraw authorization, deployment-scoped JSON persistence, and a one-command health-checked local contract demo. Claude still remains ahead on contract-test depth, durable multi-service orchestration, and event-replayed end-to-end privacy.
+GPT has been improved based on this review: it now has USDC base-unit math, an Anvil smoke test, a Viem contract behavior runner, local deployment manifests, contract-backed API endpoints, a Local Contract Rail panel that reads and writes real deployed contracts, a local PrivacyPool with commitment/nullifier checks, a signed local privacy ledger with SDK-derived accounts, EdDSA transfer/withdraw authorization, deployment-scoped JSON persistence, and a one-command health-checked local contract demo. Claude still remains ahead on Solidity-native test depth, durable multi-service orchestration, and event-replayed end-to-end privacy.
 
 ## What Claude Does Better
 
@@ -28,6 +28,7 @@ GPT has been improved based on this review: it now has USDC base-unit math, an A
 
 - Added an executable local contract path instead of compile-only contracts.
 - Added `npm run contracts:smoke` for real Anvil transactions.
+- Added `npm run contracts:behavior` for policy, cap, steward, execution, credit, utilization, allowance, and PrivacyPool failure-path checks.
 - Added `npm run contracts:deploy:local` and deployment manifests.
 - Added `GET /api/contracts/state` and `POST /api/contracts/*` endpoints for contract-mode reads/writes.
 - Added a UI `Local Contract Rail` panel with live on-chain metrics and recent events.
