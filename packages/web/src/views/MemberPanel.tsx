@@ -1,6 +1,6 @@
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import type {Address} from "viem";
-import {toUsdc} from "@charter/shared";
+import {toUsdc, fromUsdc} from "@charter/shared";
 import type {UnlinkClient} from "@charter/unlink-engine";
 import {useWallet} from "../wallet/WalletContext";
 import {useAsync, useNow} from "../hooks";
@@ -242,6 +242,34 @@ function PrivateBalanceCard({bank, eligible, onChange}: {bank: BankInfo; eligibl
   const [wdTo, setWdTo] = useState(wallet.address ?? "");
   const directory = useAsync(() => getBankMembers(bank.address), [bank.address]);
 
+  // recurring private payments / payroll (feature #6): a saved batch of private transfers
+  type PayRow = {to: string; amount: string};
+  const payrollKey = `charter.payroll.${bank.address}.${wallet.address}`;
+  const [cadence, setCadence] = useState("monthly");
+  const [payroll, setPayroll] = useState<PayRow[]>([{to: "", amount: ""}]);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(payrollKey) || "null");
+      if (saved?.rows?.length) {
+        setPayroll(saved.rows);
+        setCadence(saved.cadence ?? "monthly");
+      }
+    } catch {
+      /* ignore */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payrollKey]);
+  const savePayroll = (rows: PayRow[], cad: string) => {
+    setPayroll(rows);
+    setCadence(cad);
+    try {
+      localStorage.setItem(payrollKey, JSON.stringify({rows, cadence: cad}));
+    } catch {
+      /* ignore */
+    }
+  };
+  const [payrollStatus, setPayrollStatus] = useState<string>();
+
   async function refreshBal(c: UnlinkClient) {
     setBalance(await c.getBalance(usdcAddress));
   }
@@ -280,6 +308,22 @@ function PrivateBalanceCard({bank, eligible, onChange}: {bank: BankInfo; eligibl
       await refreshBal(client);
     }, "Withdrawn on-chain to address ✓");
   }
+  async function runPayroll() {
+    if (!client) return;
+    const rows = payroll.filter((r) => r.to.trim() && Number(r.amount) > 0);
+    if (rows.length === 0) return;
+    await tx.run(async () => {
+      let done = 0;
+      for (const r of rows) {
+        setPayrollStatus(`Paying ${done + 1}/${rows.length}…`);
+        await client.privateTransfer(usdcAddress, r.to.trim(), toUsdc(r.amount));
+        done++;
+      }
+      setPayrollStatus(undefined);
+      await refreshBal(client);
+    }, `Paid ${rows.length} recipient(s) privately ✓`);
+  }
+  const payrollTotal = payroll.reduce((s, r) => s + (Number(r.amount) > 0 ? toUsdc(r.amount) : 0n), 0n);
 
   return (
     <Section title="Private balance" icon="🔒" action={<Badge tone="brand">Unlink</Badge>}>
@@ -338,6 +382,32 @@ function PrivateBalanceCard({bank, eligible, onChange}: {bank: BankInfo; eligibl
           <div className="inline-input">
             <input value={wdAmt} onChange={(e) => setWdAmt(e.target.value)} />
             <TxButton onClick={withdraw} className="btn" pending={tx.pending} disabled={!wdTo}>Withdraw</TxButton>
+          </div>
+
+          <div className="sep" />
+          <div className="row between">
+            <span className="lbl muted" style={{fontSize: 13}}>Recurring payments / payroll <span className="private-tag">(private)</span></span>
+            <select className="select" value={cadence} onChange={(e) => savePayroll(payroll, e.target.value)}>
+              <option value="one-time">one-time</option>
+              <option value="weekly">weekly</option>
+              <option value="monthly">monthly</option>
+            </select>
+          </div>
+          {payroll.map((row, i) => (
+            <div className="inline-input" style={{marginTop: 6}} key={i}>
+              <input list="member-dir" placeholder="recipient unlink1…" value={row.to}
+                onChange={(e) => savePayroll(payroll.map((r, j) => (j === i ? {...r, to: e.target.value} : r)), cadence)} />
+              <input style={{maxWidth: 90}} placeholder="amt" value={row.amount}
+                onChange={(e) => savePayroll(payroll.map((r, j) => (j === i ? {...r, amount: e.target.value} : r)), cadence)} />
+              <button className="btn sm" title="remove" onClick={() => savePayroll(payroll.length > 1 ? payroll.filter((_, j) => j !== i) : [{to: "", amount: ""}], cadence)}>✕</button>
+            </div>
+          ))}
+          <div className="row" style={{gap: 8, marginTop: 8}}>
+            <button className="btn sm" onClick={() => savePayroll([...payroll, {to: "", amount: ""}], cadence)}>+ Add</button>
+            <TxButton onClick={runPayroll} className="btn primary sm" pending={tx.pending} disabled={payrollTotal === 0n}>Run payroll now</TxButton>
+          </div>
+          <div className="hint">
+            Saved {cadence} batch · total {fromUsdc(payrollTotal)} USDC across {payroll.filter((r) => r.to.trim() && Number(r.amount) > 0).length} recipient(s) — runs as private transfers (off-chain, hidden). {payrollStatus ?? ""}
           </div>
         </>
       )}

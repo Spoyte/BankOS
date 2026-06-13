@@ -9,7 +9,7 @@ Tracks the parent [`../../docs/FEATURE-IDEAS.md`](../../docs/FEATURE-IDEAS.md) a
 | 3 | Yield-bearing deposits (steward spread) | ✅ shipped |
 | 4 | Cross-chain deposit via LI.FI | ⬜ |
 | 5 | Gasless onboarding (Dynamic AA/paymaster) | ⬜ |
-| 6 | Recurring private payments / payroll | ⬜ |
+| 6 | Recurring private payments / payroll | ✅ shipped |
 | 7 | Selective-disclosure statements | ⬜ |
 | 8 | Reputation-based credit | ⬜ |
 | 9 | Inter-bank settlement | ⬜ |
