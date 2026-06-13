@@ -1,0 +1,14 @@
+node_modules/
+dist/
+out/
+cache/
+broadcast/
+.env
+.env.local
+*.log
+.DS_Store
+coverage/
+forge-cache/
+packages/contracts/lib/
+.vite/
+deployments/local.json

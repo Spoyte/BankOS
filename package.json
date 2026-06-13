@@ -1,0 +1,28 @@
+{
+  "name": "charter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Charter — launch a private, compliant, self-custodial stablecoin bank on Arc in minutes.",
+  "workspaces": [
+    "packages/shared",
+    "packages/cre-policy",
+    "packages/unlink-engine",
+    "packages/web"
+  ],
+  "scripts": {
+    "lifi:poc": "node scripts/lifi-poc.mjs",
+    "contracts:build": "cd packages/contracts && forge build",
+    "contracts:test": "cd packages/contracts && forge test -vv",
+    "abis": "node scripts/export-abis.mjs",
+    "chain": "anvil --chain-id 31337 --host 127.0.0.1 --port 8545",
+    "deploy:local": "cd packages/contracts && forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8545 --broadcast",
+    "policy:dev": "npm -w @charter/cre-policy run dev",
+    "engine:dev": "npm -w @charter/unlink-engine run dev",
+    "web:dev": "npm -w @charter/web run dev",
+    "seed": "npm -w @charter/cre-policy run seed",
+    "demo": "bash scripts/demo.sh"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
