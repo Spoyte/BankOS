@@ -1,6 +1,6 @@
 import {useState} from "react";
 import type {Address} from "viem";
-import {toUsdc, fromUsdc} from "@charter/shared";
+import {toUsdc, fromUsdc, type Products} from "@charter/shared";
 import {useWallet} from "../wallet/WalletContext";
 import {useAsync} from "../hooks";
 import {deployment, ENABLE_LIFI} from "../config";
@@ -9,17 +9,21 @@ import {
   allocateToStrategy,
   redeemFromStrategy,
   setPaused,
+  configureProducts,
   strategyShares,
+  getPolicy,
   type BankInfo,
 } from "../lib/contracts";
+import {getBankMembers} from "../lib/events";
 import {getArcTreasurySwapQuote, type LifiQuote} from "../lib/lifi";
-import {Money, Badge, Field, Notice, useTx, TxButton, Section} from "../components";
+import {Money, Badge, Field, Notice, Toggle, useTx, TxButton, Section} from "../components";
 
 export function StewardPanel({bank, onChange, version}: {bank: BankInfo; onChange: () => void; version: number}) {
   return (
     <div className="grid cols-2" style={{alignItems: "start"}}>
       <div>
         <CreditDesk bank={bank} onChange={onChange} />
+        <MemberRoster bank={bank} version={version} />
         <ControlsCard bank={bank} onChange={onChange} />
       </div>
       <div>
@@ -27,6 +31,39 @@ export function StewardPanel({bank, onChange, version}: {bank: BankInfo; onChang
         {ENABLE_LIFI && <LifiCard bank={bank} />}
       </div>
     </div>
+  );
+}
+
+function MemberRoster({bank, version}: {bank: BankInfo; version: number}) {
+  const roster = useAsync(async () => {
+    const members = await getBankMembers(bank.address);
+    return Promise.all(
+      members.map(async (m) => ({...m, policy: await getPolicy(bank.address, m.address)})),
+    );
+  }, [bank.address, version]);
+
+  return (
+    <Section title="Members" icon="👥">
+      {roster.loading && <div className="muted">Loading…</div>}
+      {roster.data && roster.data.length === 0 && (
+        <div className="muted">No members have registered a private account yet.</div>
+      )}
+      {roster.data?.map((m) => {
+        const eligible = m.policy.canDeposit && (m.policy.expiry === 0 || m.policy.expiry * 1000 > Date.now());
+        return (
+          <div className="kv" key={m.address}>
+            <span className="k mono" style={{cursor: "copy"}} title={m.address} onClick={() => navigator.clipboard?.writeText(m.address)}>
+              {m.address.slice(0, 8)}…{m.address.slice(-4)} 📋
+            </span>
+            <span className="val">
+              {eligible ? <Badge tone="green">tier {m.policy.tier}</Badge> : <Badge tone="amber">no policy</Badge>}
+              {m.policy.canBorrow && <Badge tone="brand">credit</Badge>}
+            </span>
+          </div>
+        );
+      })}
+      <div className="hint" style={{marginTop: 8}}>Click an address to copy it into the credit form.</div>
+    </Section>
   );
 }
 
@@ -100,8 +137,25 @@ function TreasuryDesk({bank, onChange, version}: {bank: BankInfo; onChange: () =
 function ControlsCard({bank, onChange}: {bank: BankInfo; onChange: () => void}) {
   const wallet = useWallet();
   const tx = useTx();
+  const [products, setProducts] = useState<Products>(bank.products);
+  const dirty = products.checking !== bank.products.checking || products.yield !== bank.products.yield || products.credit !== bank.products.credit;
+
   return (
     <Section title="Controls" icon="⚙️">
+      <div className="lbl muted" style={{fontSize: 13, marginBottom: 4}}>Products</div>
+      <Toggle on={products.checking} onChange={(v) => setProducts({...products, checking: v})} label="Private checking" />
+      <Toggle on={products.yield} onChange={(v) => setProducts({...products, yield: v})} label="Treasury yield" />
+      <Toggle on={products.credit} onChange={(v) => setProducts({...products, credit: v})} label="Credit lines" />
+      {dirty && (
+        <TxButton
+          onClick={() => tx.run(() => configureProducts(wallet.walletClient!, bank.address, products), "Products updated ✓").then(onChange)}
+          className="btn primary sm"
+          pending={tx.pending}
+        >
+          Save products
+        </TxButton>
+      )}
+      <div className="sep" />
       <div className="kv"><span className="k">Global deposit cap</span><span className="val">{fromUsdc(bank.risk.globalDepositCap)}</span></div>
       <div className="kv"><span className="k">Max deposit / member</span><span className="val">{fromUsdc(bank.risk.maxDepositPerMember)}</span></div>
       <div className="kv"><span className="k">Max utilization</span><span className="val">{bank.risk.maxUtilizationBps / 100}%</span></div>

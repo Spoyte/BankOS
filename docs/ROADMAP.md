@@ -19,7 +19,7 @@ Status legend: ✅ done · 🟡 in progress · ⬜ todo · �groups what needs 
 |---|---|---|
 | 7 | **JS/TS unit tests** — engine ledger (EdDSA/nonce/nullifier) + compliance brain | ✅ (24 tests) |
 | 8 | **zod validation** at policy + engine API boundaries | ✅ |
-| 9 | **"Recent activity" feed** in the UI (on-chain events via `getLogs`) | ⬜ |
+| 9 | **"Recent activity" feed** in the UI (on-chain events via `getLogs`) | ✅ |
 | 10 | `anvil --state` persistence for restart-safe local demos | ✅ |
 | 11 | Optional **SIM mode** (no anvil) for zero-dependency first run | ⬜ |
 | 12 | Wire the **LI.FI burner execution** path (currently preview-only) | ⬜ |
@@ -28,8 +28,8 @@ Status legend: ✅ done · 🟡 in progress · ⬜ todo · �groups what needs 
 
 | # | Item | Status |
 |---|---|---|
-| 13 | **Member directory / address book** for `unlink1…` addresses | ⬜ |
-| 14 | **Steward member roster** + post-charter product/risk **editing UI** | ⬜ |
+| 13 | **Member directory / address book** for `unlink1…` addresses | ✅ |
+| 14 | **Steward member roster** + post-charter product **editing UI** | ✅ |
 | 15 | **EURC** (Arc-native) multi-currency support | ⬜ |
 | 16 | `slither` security pass on the contracts | ⬜ |
 

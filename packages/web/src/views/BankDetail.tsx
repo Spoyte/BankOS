@@ -3,7 +3,8 @@ import type {Address} from "viem";
 import {useWallet} from "../wallet/WalletContext";
 import {useAsync} from "../hooks";
 import {getBankInfo} from "../lib/contracts";
-import {Money, Badge, BankLogo, Stat, Notice} from "../components";
+import {getBankActivity} from "../lib/events";
+import {Money, Badge, BankLogo, Stat, Notice, Section} from "../components";
 import {MemberPanel} from "./MemberPanel";
 import {StewardPanel} from "./StewardPanel";
 
@@ -74,8 +75,34 @@ export function BankDetail({bank, onBack}: {bank: Address; onBack: () => void}) 
           ) : (
             <StewardPanel bank={info.data} onChange={bump} version={version} />
           )}
+
+          <div style={{marginTop: 16}}>
+            <ActivityFeed bank={info.data.address} version={version} />
+          </div>
         </>
       )}
     </div>
+  );
+}
+
+function ActivityFeed({bank, version}: {bank: Address; version: number}) {
+  const activity = useAsync(() => getBankActivity(bank), [bank, version]);
+  return (
+    <Section title="Recent activity" icon="🧾" action={<Badge>on-chain</Badge>}>
+      {activity.loading && <div className="muted">Loading…</div>}
+      {activity.data && activity.data.length === 0 && <div className="muted">No activity yet.</div>}
+      {activity.data?.map((a, i) => (
+        <div className="kv" key={`${a.txHash}-${i}`}>
+          <span className="k">
+            {a.label}
+            {a.who && <span className="faint mono" style={{marginLeft: 8, fontSize: 12}}>{a.who.slice(0, 6)}…{a.who.slice(-4)}</span>}
+          </span>
+          <span className="val">
+            {a.amount ? `${a.amount} USDC` : ""}
+            <span className="faint" style={{marginLeft: 8, fontSize: 11}}>#{a.blockNumber.toString()}</span>
+          </span>
+        </div>
+      ))}
+    </Section>
   );
 }

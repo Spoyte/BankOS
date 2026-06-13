@@ -19,6 +19,7 @@ import {
 } from "../lib/contracts";
 import {applyForPolicy} from "../lib/policy";
 import {getUnlinkClient} from "../lib/unlink";
+import {getBankMembers} from "../lib/events";
 import type {BankInfo} from "../lib/contracts";
 import {Money, Badge, Field, Notice, useTx, TxButton, Section} from "../components";
 
@@ -220,6 +221,7 @@ function PrivateBalanceCard({bank, eligible, onChange}: {bank: BankInfo; eligibl
   const [xferTo, setXferTo] = useState("");
   const [wdAmt, setWdAmt] = useState("100");
   const [wdTo, setWdTo] = useState(wallet.address ?? "");
+  const directory = useAsync(() => getBankMembers(bank.address), [bank.address]);
 
   async function refreshBal(c: UnlinkClient) {
     setBalance(await c.getBalance(usdcAddress));
@@ -295,7 +297,18 @@ function PrivateBalanceCard({bank, eligible, onChange}: {bank: BankInfo; eligibl
           </div>
 
           <div className="lbl muted" style={{fontSize: 13, marginTop: 12}}>Private transfer <span className="private-tag">(hidden, off-chain)</span></div>
-          <Field label="" ><input placeholder="recipient unlink1… address" value={xferTo} onChange={(e) => setXferTo(e.target.value)} /></Field>
+          <Field label="" hint={directory.data && directory.data.length > 1 ? "Pick a member from the directory or paste an unlink1… address." : undefined}>
+            <input list="member-dir" placeholder="recipient unlink1… address" value={xferTo} onChange={(e) => setXferTo(e.target.value)} />
+            <datalist id="member-dir">
+              {directory.data
+                ?.filter((m) => m.unlinkAccount && m.unlinkAccount !== client.getAddress())
+                .map((m) => (
+                  <option key={m.address} value={m.unlinkAccount}>
+                    {m.address.slice(0, 8)}…{m.address.slice(-4)}
+                  </option>
+                ))}
+            </datalist>
+          </Field>
           <div className="inline-input">
             <input value={xferAmt} onChange={(e) => setXferAmt(e.target.value)} />
             <TxButton onClick={transfer} className="btn primary" pending={tx.pending} disabled={!xferTo}>Send private</TxButton>

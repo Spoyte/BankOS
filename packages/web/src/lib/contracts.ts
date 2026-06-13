@@ -191,6 +191,8 @@ export const redeemFromStrategy = (wc: WalletClient, bank: Address, vault: Addre
   send(wc, bank, abis.Bank, "redeemFromStrategy", [vault, shares]);
 export const setPaused = (wc: WalletClient, bank: Address, paused: boolean) =>
   send(wc, bank, abis.Bank, "setPaused", [paused]);
+export const configureProducts = (wc: WalletClient, bank: Address, p: Products) =>
+  send(wc, bank, abis.Bank, "configureProducts", [{checking: p.checking, yield: p.yield, credit: p.credit}]);
 export const configureRisk = (wc: WalletClient, bank: Address, risk: RiskConfig) =>
   send(wc, bank, abis.Bank, "configureRisk", [
     {
