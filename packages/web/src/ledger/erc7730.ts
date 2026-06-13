@@ -52,6 +52,14 @@ export const clearSign = {
     ];
     return {contract: bank, functionName: "allocateToStrategy(address,uint256)", intent: "Move idle reserve into a yield strategy", fields, raw: descriptor(bank, "allocateToStrategy(address,uint256)", "Allocate reserve to strategy", fields)};
   },
+  redeem(bank: Address, vault: Address, shares: bigint, assetsApprox: bigint): ClearSignView {
+    const fields = [
+      {label: "Bank", value: bank},
+      {label: "Strategy vault", value: vault},
+      {label: "Redeem (≈ assets)", value: `${fromUsdc(assetsApprox)} USDC`},
+    ];
+    return {contract: bank, functionName: "redeemFromStrategy(address,uint256)", intent: "Redeem reserve from a yield strategy", fields, raw: descriptor(bank, "redeemFromStrategy(address,uint256)", "Redeem from strategy", fields)};
+  },
   openCredit(bank: Address, member: Address, limit: bigint): ClearSignView {
     const fields = [
       {label: "Bank", value: bank},

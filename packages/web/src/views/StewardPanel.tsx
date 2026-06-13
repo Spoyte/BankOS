@@ -16,6 +16,7 @@ import {
 } from "../lib/contracts";
 import {getBankMembers} from "../lib/events";
 import {getArcTreasurySwapQuote, type LifiQuote} from "../lib/lifi";
+import {proposeTreasuryMove} from "../lib/treasuryAgent";
 import {useLedger} from "../ledger/LedgerProvider";
 import {clearSign} from "../ledger/erc7730";
 import {Money, Badge, Field, Notice, Toggle, useTx, TxButton, Section} from "../components";
@@ -29,10 +30,72 @@ export function StewardPanel({bank, onChange, version}: {bank: BankInfo; onChang
         <ControlsCard bank={bank} onChange={onChange} />
       </div>
       <div>
+        <TreasuryAgentCard bank={bank} onChange={onChange} />
         <TreasuryDesk bank={bank} onChange={onChange} version={version} />
         {ENABLE_LIFI && <LifiCard bank={bank} />}
       </div>
     </div>
+  );
+}
+
+function TreasuryAgentCard({bank, onChange}: {bank: BankInfo; onChange: () => void}) {
+  const wallet = useWallet();
+  const ledger = useLedger();
+  const tx = useTx();
+  const proposal = proposeTreasuryMove(bank);
+  const toneByRisk = {low: "green", medium: "amber", high: "red"} as const;
+
+  async function execute() {
+    if (proposal.action === "hold") return;
+    await tx.run(async () => {
+      if (proposal.action === "allocate") {
+        await ledger.requestApproval(clearSign.allocate(bank.address, deployment.yieldVault, proposal.amount));
+        await allocateToStrategy(wallet.walletClient!, bank.address, deployment.yieldVault, proposal.amount);
+      } else {
+        const sharesHeld = await strategyShares(bank.address, deployment.yieldVault);
+        const shares = bank.strategyAssets > 0n ? (sharesHeld * proposal.amount) / bank.strategyAssets : sharesHeld;
+        await ledger.requestApproval(clearSign.redeem(bank.address, deployment.yieldVault, shares, proposal.amount));
+        await redeemFromStrategy(wallet.walletClient!, bank.address, deployment.yieldVault, shares);
+      }
+    }, "Agent move approved & executed ✓");
+    onChange();
+  }
+
+  return (
+    <Section title="Treasury agent" icon="🤖" action={<Badge tone="brand">AI + Ledger</Badge>}>
+      <div className="agent-headline">
+        <div className="agent-avatar">◆</div>
+        <div style={{flex: 1}}>
+          <strong>{proposal.headline}</strong>
+          <div className="row" style={{gap: 6, marginTop: 4}}>
+            <Badge tone={toneByRisk[proposal.risk]}>{proposal.risk} risk</Badge>
+            {proposal.requiresLedger && <Badge tone="brand">Ledger approval required</Badge>}
+            {proposal.action !== "hold" && <Badge>{proposal.action} · {fromUsdc(proposal.amount)} USDC</Badge>}
+          </div>
+        </div>
+      </div>
+
+      <div className="agent-reasoning">
+        {proposal.rationale.map((r, i) => (
+          <div className="agent-thought" key={i}>
+            <span className="agent-bullet">›</span> {r}
+          </div>
+        ))}
+      </div>
+
+      {proposal.action !== "hold" && (
+        <>
+          <div className="kv"><span className="k">Idle after</span><span className="val">{fromUsdc(proposal.projected.idleAfter)} USDC</span></div>
+          <div className="kv"><span className="k">Deployed after</span><span className="val">{fromUsdc(proposal.projected.deployedAfter)} USDC</span></div>
+          <TxButton onClick={execute} className="btn primary block" pending={tx.pending} disabled={!bank.products.yield}>
+            {proposal.requiresLedger || ledger.enabled ? "✦ Approve on Ledger & execute" : "Execute agent move"}
+          </TxButton>
+          <div className="hint">The agent proposes; you approve on-device. Nothing moves without your signature.</div>
+        </>
+      )}
+      {tx.error && <Notice tone="err">{tx.error}</Notice>}
+      {tx.ok && <Notice tone="ok">{tx.ok}</Notice>}
+    </Section>
   );
 }
 

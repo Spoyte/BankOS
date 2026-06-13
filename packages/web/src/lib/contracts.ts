@@ -47,6 +47,7 @@ export interface BankInfo {
   strategyAssets: bigint;
   totalAssets: bigint;
   utilizationBps: bigint;
+  totalPendingWithdraw: bigint;
 }
 
 function asProducts(t: any): Products {
@@ -64,7 +65,7 @@ function asRisk(t: any): RiskConfig {
 
 export async function getBankInfo(bank: Address): Promise<BankInfo> {
   const B = abis.Bank;
-  const [name, brandURI, steward, paused, products, risk, totalDeposits, totalDebt, idle, strat, total, util] =
+  const [name, brandURI, steward, paused, products, risk, totalDeposits, totalDebt, idle, strat, total, util, pending] =
     await Promise.all([
       read(bank, B, "name"),
       read(bank, B, "brandURI"),
@@ -78,6 +79,7 @@ export async function getBankInfo(bank: Address): Promise<BankInfo> {
       read(bank, B, "strategyAssets"),
       read(bank, B, "totalAssets"),
       read(bank, B, "utilizationBps"),
+      read(bank, B, "totalPendingWithdraw"),
     ]);
   return {
     address: bank,
@@ -93,6 +95,7 @@ export async function getBankInfo(bank: Address): Promise<BankInfo> {
     strategyAssets: strat as bigint,
     totalAssets: total as bigint,
     utilizationBps: util as bigint,
+    totalPendingWithdraw: pending as bigint,
   };
 }
 
