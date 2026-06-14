@@ -1,6 +1,7 @@
 import {useState} from "react";
 import type {Address} from "viem";
 import {toUsdc, fromUsdc, type Products} from "@bankos/shared";
+import type {UnlinkClient} from "@bankos/unlink-engine";
 import {useWallet} from "../wallet/WalletContext";
 import {useAsync} from "../hooks";
 import {deployment, ENABLE_LIFI} from "../config";
@@ -17,9 +18,14 @@ import {
   claimStewardFees,
   stewardFees,
   stewardSpreadBps,
+  listBanks,
+  getBankInfo,
+  usdcAddress,
   type BankInfo,
 } from "../lib/contracts";
 import {getBankMembers} from "../lib/events";
+import {getUnlinkClient} from "../lib/unlink";
+import {registerTreasury, getTreasury, getSettlements, getNet} from "../lib/settlements";
 import {getArcTreasurySwapQuote, type LifiQuote} from "../lib/lifi";
 import {proposeTreasuryMove, fetchClaudeReview} from "../lib/treasuryAgent";
 import {useLedger} from "../ledger/LedgerProvider";
@@ -37,9 +43,123 @@ export function StewardPanel({bank, onChange, version}: {bank: BankInfo; onChang
       <div>
         <TreasuryAgentCard bank={bank} onChange={onChange} />
         <TreasuryDesk bank={bank} onChange={onChange} version={version} />
+        <InterBankSettlementCard bank={bank} />
         {ENABLE_LIFI && <LifiCard bank={bank} />}
       </div>
     </div>
+  );
+}
+
+// ----------------------------------------------------------- inter-bank settlement (feature #9)
+function InterBankSettlementCard({bank}: {bank: BankInfo}) {
+  const wallet = useWallet();
+  const tx = useTx();
+  const [client, setClient] = useState<UnlinkClient | null>(null);
+  const [treasuryBal, setTreasuryBal] = useState<bigint>(0n);
+  const [counterparty, setCounterparty] = useState<string>("");
+  const [amount, setAmount] = useState("1000");
+  const [memo, setMemo] = useState("");
+
+  const others = useAsync(async () => {
+    const addrs = (await listBanks()).filter((a) => a.toLowerCase() !== bank.address.toLowerCase());
+    return Promise.all(addrs.map(getBankInfo));
+  }, [bank.address]);
+  const settlements = useAsync(() => getSettlements(bank.address), [bank.address, tx.ok]);
+  const net = useAsync(
+    () => (counterparty ? getNet(bank.address, counterparty as Address) : Promise.resolve(null)),
+    [bank.address, counterparty, tx.ok],
+  );
+
+  async function setupTreasury() {
+    await tx.run(async () => {
+      const c = await getUnlinkClient(wallet.walletClient!, wallet.address!);
+      await registerTreasury(bank.address, c.getAddress());
+      setClient(c);
+      setTreasuryBal(await c.getBalance(usdcAddress));
+    }, "Settlement treasury published ✓");
+  }
+  async function shieldToTreasury() {
+    if (!client) return;
+    await tx.run(async () => {
+      await client.deposit(usdcAddress, toUsdc(amount || "0"));
+      setTreasuryBal(await client.getBalance(usdcAddress));
+    }, `Shielded ${amount} USDC to treasury ✓`);
+  }
+  async function settle() {
+    if (!client || !counterparty) return;
+    await tx.run(async () => {
+      const dest = await getTreasury(counterparty as Address);
+      if (!dest) throw new Error("counterparty bank hasn't published a settlement treasury yet");
+      await client.settle!(usdcAddress, dest, toUsdc(amount || "0"), {
+        fromBank: bank.address,
+        toBank: counterparty as Address,
+        memo,
+      });
+      setTreasuryBal(await client.getBalance(usdcAddress));
+    }, "Settled privately ✓");
+  }
+
+  const n = net.data;
+  return (
+    <Section title="Inter-bank settlement" icon="🏦" action={<Badge tone="brand">Unlink · private</Badge>}>
+      <p className="muted" style={{marginTop: 0}}>
+        Settle obligations with another bank on the factory — a real private transfer between treasuries,
+        hidden from the public chain. The engine nets your mutual positions.
+      </p>
+      {!client ? (
+        <TxButton onClick={setupTreasury} className="btn primary block" pending={tx.pending}>
+          Publish settlement treasury
+        </TxButton>
+      ) : (
+        <>
+          <div className="kv"><span className="k">Treasury (private)</span><span className="val"><Money v={treasuryBal} /></span></div>
+          {(others.data?.length ?? 0) === 0 ? (
+            <div className="hint" style={{marginTop: 8}}>No counterparty banks chartered yet.</div>
+          ) : (
+            <>
+              <Field label="Counterparty bank">
+                <select className="input" value={counterparty} onChange={(e) => setCounterparty(e.target.value)}>
+                  <option value="">Select a bank…</option>
+                  {others.data?.map((b) => (
+                    <option key={b.address} value={b.address}>{b.name}</option>
+                  ))}
+                </select>
+              </Field>
+              <div className="grid cols-2" style={{gap: 10}}>
+                <Field label="Amount (USDC)"><input className="input" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
+                <Field label="Memo"><input className="input" value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="net rent float" /></Field>
+              </div>
+              <div className="row" style={{gap: 8}}>
+                <TxButton onClick={shieldToTreasury} className="btn" pending={tx.pending}>Shield to treasury</TxButton>
+                <TxButton onClick={settle} className="btn primary" pending={tx.pending} disabled={!counterparty}>Settle privately</TxButton>
+              </div>
+              {n && Number(n.count) > 0 && (
+                <div className="notice info" style={{marginTop: 10}}>
+                  Net position: {BigInt(n.net) === 0n ? "settled flat" : BigInt(n.net) > 0n
+                    ? <>you owe <Money v={BigInt(n.net)} /></>
+                    : <>owed to you <Money v={-BigInt(n.net)} /></>} <span className="faint">({n.count} settlement{n.count === 1 ? "" : "s"})</span>
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
+      {tx.error && <Notice tone="err">{tx.error}</Notice>}
+      {tx.ok && <Notice tone="ok">{tx.ok}</Notice>}
+      {(settlements.data?.length ?? 0) > 0 && (
+        <div style={{marginTop: 12}}>
+          <div className="muted" style={{fontSize: 12, marginBottom: 6}}>Recent settlements (private)</div>
+          <ul style={{margin: 0, paddingLeft: 16, fontSize: 12, lineHeight: 1.8}}>
+            {settlements.data?.slice(0, 5).map((s) => (
+              <li key={s.id}>
+                {s.fromBank.toLowerCase() === bank.address.toLowerCase() ? "→ paid" : "← received"}{" "}
+                <Money v={BigInt(s.amount)} />{s.memo ? ` · ${s.memo}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Section>
   );
 }
 

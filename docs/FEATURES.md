@@ -12,7 +12,7 @@ Tracks the parent [`../../docs/FEATURE-IDEAS.md`](../../docs/FEATURE-IDEAS.md) a
 | 6 | Recurring private payments / payroll | ✅ shipped |
 | 7 | **Selective-disclosure statements** | ✅ shipped (bank-signed, range-disclosed, verified trustlessly client-side) |
 | 8 | **Reputation-based credit** | ✅ shipped (on-chain repayment history → scored credit limit, capped by bank cap) |
-| 9 | Inter-bank settlement | ⬜ |
+| 9 | **Inter-bank settlement** | ✅ shipped (private treasury-to-treasury transfers between banks + engine netting) |
 | 10 | Multi-currency (EURC) + FX | ⬜ |
 
 ## #1 — AI treasury agent + Ledger human-in-the-loop ✅

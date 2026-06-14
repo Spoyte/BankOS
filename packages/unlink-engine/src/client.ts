@@ -37,6 +37,13 @@ export interface UnlinkClient {
   privateTransfer(token: Address, recipientUnlink: string, amount: bigint): Promise<void>;
   /** Exit to a (fresh) EVM address; settled on-chain by the engine relayer. */
   withdraw(token: Address, recipientEvm: Address, amount: bigint): Promise<WithdrawResult>;
+  /** Private inter-bank settlement (feature #9): a recorded, nettable private transfer between banks. */
+  settle?(
+    token: Address,
+    recipientUnlink: string,
+    amount: bigint,
+    meta: {fromBank: Address; toBank: Address; memo?: string},
+  ): Promise<void>;
 }
 
 function randomBlinding(): bigint {
@@ -137,6 +144,28 @@ export class LocalUnlinkClient implements UnlinkClient {
       amount: amount.toString(),
       nonce: nonce.toString(),
       sig: serializeSig(sig),
+    });
+  }
+
+  async settle(
+    token: Address,
+    recipientUnlink: string,
+    amount: bigint,
+    meta: {fromBank: Address; toBank: Address; memo?: string},
+  ): Promise<void> {
+    const nonce = await this.nonce();
+    const msg = transferMessage(recipientUnlink, amount, nonce);
+    const sig = await sign(this.o.account.spendingPrivateKey, msg);
+    await this.api("/settlement", {
+      from: this.o.account.address,
+      to: recipientUnlink,
+      token,
+      amount: amount.toString(),
+      nonce: nonce.toString(),
+      sig: serializeSig(sig),
+      fromBank: meta.fromBank,
+      toBank: meta.toBank,
+      memo: meta.memo ?? "",
     });
   }
 
