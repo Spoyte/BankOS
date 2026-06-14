@@ -19,7 +19,7 @@ import {Ownable} from "solady/auth/Ownable.sol";
 ///           double-spends.
 ///
 ///         This deployed contract IS the on-chain settlement pool (our PrivacyPool). In BankOS it is
-///         paired with our own shielded-ledger engine (real @unlink-xyz/sdk crypto, emulated ledger)
+///         paired with our own shielded-ledger engine (real Unlink-SDK crypto, emulated ledger)
 ///         acting as the relayer, so the full deposit -> private transfer -> withdraw flow settles on
 ///         Arc. A production Unlink integration would instead point the relayer at the Unlink-operated
 ///         pool/engine reached through the Unlink SDK.
