@@ -1,7 +1,9 @@
-import {chainById, type Deployment} from "@bankos/shared";
+import {chainById, ARC_EURC, type Deployment} from "@bankos/shared";
 import deploymentJson from "./generated/deployment.json";
 
 export const deployment = deploymentJson as unknown as Deployment;
+/** Arc-native EURC, the second supported currency (feature #10). Held privately in the shielded ledger. */
+export const EURC_ADDRESS = (deployment.eurc ?? ARC_EURC) as `0x${string}`;
 export const CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID ?? deployment.chainId ?? 31337);
 export const chain = chainById(CHAIN_ID);
 export const RPC_URL = import.meta.env.VITE_RPC_URL ?? chain.rpcUrls.default.http[0];

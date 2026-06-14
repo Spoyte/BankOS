@@ -101,6 +101,32 @@ export class ShieldedLedger {
   }
 
   /**
+   * Verify + apply a private FX swap (feature #10): debit one shielded currency, credit another at the
+   * engine-computed rate. Authorized by an EdDSA signature over a transfer-to-self message, so only the
+   * account owner can swap their own funds. Stays entirely within the shielded ledger (private).
+   */
+  async fxSwap(params: {
+    unlinkAddress: string;
+    fromToken: string;
+    toToken: string;
+    amountIn: bigint;
+    amountOut: bigint;
+    nonce: bigint;
+    sig: EdDSASignature;
+  }) {
+    const acct = this.require(params.unlinkAddress);
+    if (params.nonce !== acct.nonce) throw new Error(`bad nonce: expected ${acct.nonce}`);
+
+    const msg = transferMessage(params.unlinkAddress, params.amountIn, params.nonce);
+    const ok = await verify(msg, params.sig, acct.spendingPublicKey);
+    if (!ok) throw new Error("invalid EdDSA signature");
+
+    this.debit(params.unlinkAddress, params.fromToken, params.amountIn);
+    this.credit(params.unlinkAddress, params.toToken, params.amountOut);
+    acct.nonce += 1n;
+  }
+
+  /**
    * Verify + apply a withdrawal: debits the shielded balance and returns the on-chain nullifier so
    * the engine relayer can settle `PrivacyPool.withdraw(recipient, amount, nullifier)`.
    */

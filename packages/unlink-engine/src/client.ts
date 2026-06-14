@@ -44,6 +44,8 @@ export interface UnlinkClient {
     amount: bigint,
     meta: {fromBank: Address; toBank: Address; memo?: string},
   ): Promise<void>;
+  /** Private FX swap (feature #10): swap one shielded currency for another in the ledger. */
+  fxSwap?(fromToken: Address, toToken: Address, amountIn: bigint): Promise<{amountOut: bigint}>;
 }
 
 function randomBlinding(): bigint {
@@ -167,6 +169,21 @@ export class LocalUnlinkClient implements UnlinkClient {
       toBank: meta.toBank,
       memo: meta.memo ?? "",
     });
+  }
+
+  async fxSwap(fromToken: Address, toToken: Address, amountIn: bigint): Promise<{amountOut: bigint}> {
+    const nonce = await this.nonce();
+    const msg = transferMessage(this.o.account.address, amountIn, nonce); // authorize a swap of own funds
+    const sig = await sign(this.o.account.spendingPrivateKey, msg);
+    const r = await this.api("/fx", {
+      unlinkAddress: this.o.account.address,
+      fromToken,
+      toToken,
+      amountIn: amountIn.toString(),
+      nonce: nonce.toString(),
+      sig: serializeSig(sig),
+    });
+    return {amountOut: BigInt(r.amountOut)};
   }
 
   async withdraw(token: Address, recipientEvm: Address, amount: bigint): Promise<WithdrawResult> {

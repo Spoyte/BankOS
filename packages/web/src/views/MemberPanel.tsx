@@ -24,6 +24,7 @@ import {getUnlinkClient} from "../lib/unlink";
 import {getBankMembers} from "../lib/events";
 import {issueStatement, formatBand} from "../lib/statements";
 import {getReputation} from "../lib/reputation";
+import {EURC_ADDRESS} from "../config";
 import type {BankInfo} from "../lib/contracts";
 import {Money, Badge, Field, Notice, Toggle, useTx, TxButton, Section} from "../components";
 
@@ -386,8 +387,23 @@ function PrivateBalanceCard({bank, eligible, onChange}: {bank: BankInfo; eligibl
   };
   const [payrollStatus, setPayrollStatus] = useState<string>();
 
+  // multi-currency FX (feature #10)
+  const [eurcBalance, setEurcBalance] = useState<bigint>(0n);
+  const [swapAmt, setSwapAmt] = useState("100");
+  const [swapDir, setSwapDir] = useState<"USDC->EURC" | "EURC->USDC">("USDC->EURC");
+
   async function refreshBal(c: UnlinkClient) {
     setBalance(await c.getBalance(usdcAddress));
+    setEurcBalance(await c.getBalance(EURC_ADDRESS));
+  }
+
+  async function swapFx() {
+    if (!client) return;
+    const [from, to] = swapDir === "USDC->EURC" ? [usdcAddress, EURC_ADDRESS] : [EURC_ADDRESS, usdcAddress];
+    await tx.run(async () => {
+      await client.fxSwap!(from, to, toUsdc(swapAmt || "0"));
+      await refreshBal(client);
+    }, "Swapped privately ✓");
   }
 
   async function setup() {
@@ -466,6 +482,24 @@ function PrivateBalanceCard({bank, eligible, onChange}: {bank: BankInfo; eligibl
             <span className="val" title={client.getAddress()} style={{cursor: "copy"}} onClick={() => navigator.clipboard?.writeText(client.getAddress())}>
               {client.getAddress().slice(0, 18)}… 📋
             </span>
+          </div>
+          <div className="kv">
+            <span className="k">EURC balance (private)</span>
+            <span className="val"><Money v={eurcBalance} sym="EURC" /></span>
+          </div>
+
+          <div className="sep" />
+          <div className="lbl muted" style={{fontSize: 13}}>FX swap <span className="private-tag">(private, in-shield)</span></div>
+          <div className="inline-input">
+            <select className="input" value={swapDir} onChange={(e) => setSwapDir(e.target.value as "USDC->EURC" | "EURC->USDC")}>
+              <option value="USDC->EURC">USDC → EURC</option>
+              <option value="EURC->USDC">EURC → USDC</option>
+            </select>
+            <input value={swapAmt} onChange={(e) => setSwapAmt(e.target.value)} />
+            <TxButton onClick={swapFx} className="btn" pending={tx.pending}>Swap</TxButton>
+          </div>
+          <div className="faint" style={{fontSize: 11, marginTop: 4}}>
+            ~0.9860 EURC/USDC · indicative LI.FI Arc rate · swapped privately in the shielded ledger
           </div>
 
           <div className="sep" />

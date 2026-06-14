@@ -26,7 +26,7 @@ import {
 } from "viem";
 import {privateKeyToAccount} from "viem/accounts";
 import {abis} from "@bankos/shared/abis";
-import {chainById, type Deployment} from "@bankos/shared";
+import {chainById, ARC_EURC, type Deployment} from "@bankos/shared";
 import {ShieldedLedger} from "./ledger.js";
 import {deserializeSig} from "./account.js";
 import {
@@ -39,6 +39,7 @@ import {
   type StatementClaims,
 } from "./statements.js";
 import {SettlementBook, type Settlement, type NetPosition} from "./settlements.js";
+import {fxOut, fxRateLabel, type Currency} from "./fx.js";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const chainId = Number(process.env.CHAIN_ID ?? 31337);
@@ -189,12 +190,15 @@ app.post("/withdraw", async (req, res) => {
   }
 });
 
-// ---- selective-disclosure statements (feature #7) ----
-function currencyOf(token: Address): string {
+// ---- currency recognition (USDC = the deployed token; EURC = canonical Arc EURC) ----
+function symbolOf(token: Address): Currency | null {
   const t = token.toLowerCase();
   if (t === dep.usdc.toLowerCase()) return "USDC";
-  if (dep.eurc && t === dep.eurc.toLowerCase()) return "EURC";
-  return "TOKEN";
+  if (t === ARC_EURC.toLowerCase() || (dep.eurc && t === dep.eurc.toLowerCase())) return "EURC";
+  return null;
+}
+function currencyOf(token: Address): string {
+  return symbolOf(token) ?? "TOKEN";
 }
 
 /** Read a member's on-chain compliance policy (attested via Chainlink CRE) from PolicyRegistry. */
@@ -373,6 +377,49 @@ app.get("/settlements/:bank", (req, res) => {
 
 app.get("/settlement/net/:bankA/:bankB", (req, res) => {
   res.json(serializeNet(book.net(req.params.bankA, req.params.bankB)));
+});
+
+// ---- multi-currency FX (feature #10): private USDC <-> EURC swap in the shielded ledger ----
+const fxSchema = z.object({
+  unlinkAddress: unlinkAddr,
+  fromToken: evmAddr,
+  toToken: evmAddr,
+  amountIn: decStr,
+  nonce: decStr,
+  sig: sigSchema,
+});
+
+app.get("/fx/rate", (_req, res) =>
+  res.json({usdc: dep.usdc, eurc: ARC_EURC, eurcPerUsdc: fxRateLabel("USDC", "EURC"), usdcPerEurc: fxRateLabel("EURC", "USDC")}),
+);
+
+app.post("/fx", async (req, res) => {
+  try {
+    const {unlinkAddress, fromToken, toToken, amountIn, nonce, sig} = fxSchema.parse(req.body);
+    const from = symbolOf(fromToken as Address);
+    const to = symbolOf(toToken as Address);
+    if (!from || !to) return res.status(400).json({error: "unsupported currency"});
+    if (from === to) return res.status(400).json({error: "from and to currency are the same"});
+    const amountOut = fxOut(BigInt(amountIn), from as Currency, to as Currency);
+    await ledger.fxSwap({
+      unlinkAddress,
+      fromToken,
+      toToken,
+      amountIn: BigInt(amountIn),
+      amountOut,
+      nonce: BigInt(nonce),
+      sig: deserializeSig(sig),
+    });
+    res.json({
+      ok: true,
+      amountOut: amountOut.toString(),
+      fromBalance: ledger.balanceOf(unlinkAddress, fromToken).toString(),
+      toBalance: ledger.balanceOf(unlinkAddress, toToken).toString(),
+    });
+  } catch (e: any) {
+    if (badRequest(res, e)) return;
+    res.status(400).json({error: e?.message ?? "fx failed"});
+  }
 });
 
 // Railway/Render/Fly inject PORT; honor it first, then the app-specific override, then the local default.
