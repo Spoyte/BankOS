@@ -1,0 +1,27 @@
+# BankOS — Chainlink CRE policy service (local DON simulator + Arc attester).
+# Deploy:  fly deploy -c fly.cre-policy.toml
+# Stateless, but kept always-on for a snappy demo. The Arc attester key is a Fly secret
+# (ATTESTER_PRIVATE_KEY), never stored here.
+app = "bankos-cre-policy"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+  [build.args]
+    SERVICE = "cre-policy"
+
+[env]
+  PORT = "8080"
+  CHAIN_ID = "5042002"
+  RPC_URL = "https://rpc.testnet.arc.network"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

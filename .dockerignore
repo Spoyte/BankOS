@@ -1,0 +1,21 @@
+# Keep the Docker build context small and secret-free.
+# NOTE: packages/contracts/deployments/<chainId>.json IS needed (the backends read Arc
+# addresses from it), so contracts/ is only pruned of its heavy Foundry artifacts below.
+**/node_modules
+.git
+.gitignore
+.secrets
+.env
+**/.env.local
+**/broadcast
+**/cache
+**/out
+**/dist
+.railway
+.fly
+*.log
+
+# Foundry artifacts (large, not needed at runtime) — but NOT contracts/deployments.
+packages/contracts/lib
+packages/contracts/cache
+packages/contracts/out
