@@ -54,3 +54,22 @@ The ideal submission is Claude's on-chain/privacy core plus GPT's faster product
 - Keep Claude's durable PrivacyPool/Unlink service, CRE attester, and Foundry tests.
 - Add GPT-style simulator fallback, compact unified audit/feed UX, and one-command no-credentials demo.
 - Make every UI action show whether it is simulator-backed or contract-backed.
+
+## 2026-06-14 Delta: Yield Feedback Applied In GPT
+
+Claude's `Feature #3: yield-bearing deposits with steward spread` was the strongest remaining model for GPT's treasury gap. Claude still does this better because it harvests real ERC-4626-style vault gains, leaves principal deployed, gates strategy calls through the execution router, exposes member savings in the web UI, and Ledger-gates steward harvest/spread/fee actions.
+
+What GPT adopted now:
+
+- Added on-chain yield-share accounting to `PersonalizedBank`.
+- Added pro-rata `savingsClaimable`, `claimSavings`, `harvestStrategyYield`, `claimStewardFees`, and steward spread state/events.
+- Added contract rail API/UI actions for harvest, member savings claim, and steward-fee claim.
+- Added member workflow savings metrics and claim button in `local-contract` mode.
+- Added Anvil behavior coverage for empty harvest, spread cap, pro-rata distribution, member claim, repeat empty-claim rejection, and steward fee claim.
+- Extended `contracts:smoke` so the full local lifecycle includes yield harvest and claims.
+
+Remaining GPT gap versus Claude:
+
+- GPT's harvest is still demo-mint-backed; Claude's is vault-backed.
+- GPT does not yet Ledger-gate steward yield actions.
+- GPT's Viem behavior runner now covers the loop, but Claude's Foundry fixtures are still deeper for Solidity-native accounting edge cases.
