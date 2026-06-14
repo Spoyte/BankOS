@@ -46,6 +46,17 @@ const chainId = Number(process.env.CHAIN_ID ?? 31337);
 const rpcUrl = process.env.RPC_URL ?? "http://127.0.0.1:8545";
 const chain = chainById(chainId);
 
+// Fail fast on a real chain: never sign Arc txs with the local anvil fallback key / localhost RPC.
+if (chainId !== 31337) {
+  const missing = [
+    !process.env.ENGINE_PRIVATE_KEY && "ENGINE_PRIVATE_KEY",
+    !process.env.RPC_URL && "RPC_URL",
+  ].filter(Boolean);
+  if (missing.length) {
+    throw new Error(`[unlink-engine] chainId ${chainId} requires ${missing.join(", ")} to be set — refusing to start with anvil defaults`);
+  }
+}
+
 const dep = JSON.parse(
   readFileSync(
     process.env.DEPLOYMENT_PATH ?? join(__dir, "..", "..", "contracts", "deployments", `${chainId}.json`),
@@ -164,11 +175,16 @@ app.post("/transfer", async (req, res) => {
   }
 });
 
-// Withdrawal — engine verifies, debits shielded balance, settles on-chain via PrivacyPool.
+// Withdrawal — settle on-chain FIRST, then debit. The shielded balance/nullifier/nonce are only
+// mutated after a confirmed on-chain receipt, so a failed/reverted PrivacyPool.withdraw can never lose
+// a member's private funds (atomicity fix).
 app.post("/withdraw", async (req, res) => {
+  let inFlightFrom: string | null = null;
   try {
     const {from, recipientEvm, token, amount, nonce, sig} = withdrawSchema.parse(req.body);
-    const {nullifier} = await ledger.prepareWithdraw({
+
+    // 1. Validate only (no balance mutation); marks the account in-flight.
+    const {nullifier} = await ledger.validateWithdraw({
       from,
       recipientEvm,
       token,
@@ -176,15 +192,25 @@ app.post("/withdraw", async (req, res) => {
       nonce: BigInt(nonce),
       sig: deserializeSig(sig),
     });
+    inFlightFrom = from;
+
+    // 2. Settle on-chain via the relayer, and require a SUCCESS receipt.
     const txHash = await walletClient.writeContract({
       address: dep.privacyPool,
       abi: abis.PrivacyPool,
       functionName: "withdraw",
       args: [recipientEvm as Address, BigInt(amount), nullifier],
     });
-    await publicClient.waitForTransactionReceipt({hash: txHash});
+    const receipt = await publicClient.waitForTransactionReceipt({hash: txHash});
+    if (receipt.status !== "success") throw new Error(`on-chain withdraw reverted (${txHash})`);
+
+    // 3. Confirmed — now debit the shielded balance + burn the nullifier.
+    ledger.commitWithdraw({from, token, amount: BigInt(amount), nonce: BigInt(nonce), nullifier});
+    inFlightFrom = null;
     res.json({ok: true, txHash, nullifier, balance: ledger.balanceOf(from, token).toString()});
   } catch (e: any) {
+    // Settlement failed after validation — release the lock; nothing was debited, so funds are safe.
+    if (inFlightFrom) ledger.abortWithdraw(inFlightFrom);
     if (badRequest(res, e)) return;
     res.status(400).json({error: e?.message ?? "withdraw failed"});
   }

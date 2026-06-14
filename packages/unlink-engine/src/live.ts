@@ -1,8 +1,12 @@
 /**
- * LiveUnlinkClient — the production privacy path, backed by the real hosted Unlink engine via
- * `@unlink-xyz/sdk`. Enabled when UNLINK_ENGINE_URL + UNLINK_API_KEY are configured (e.g. the
- * Arc-testnet hosted environment). Account identity (unlink1… address) is shared with the local
- * client through the same `@unlink-xyz/sdk` account derivation.
+ * LiveUnlinkClient — the OPTIONAL path to Unlink's real hosted engine via `@unlink-xyz/sdk`, enabled
+ * when UNLINK_ENGINE_URL + UNLINK_API_KEY are configured.
+ *
+ * NOTE: the shipped BankOS demo does NOT use this (we have no Unlink production credentials). The demo
+ * runs `LocalUnlinkClient` against our own shielded-ledger engine emulator (real `@unlink-xyz/sdk`
+ * crypto, emulated ledger). This class is the drop-in seam for a real Unlink-engine integration; account
+ * identity (unlink1… address) is shared with the local client via the same account derivation, so
+ * switching providers does not change account identity.
  */
 import {createUnlink, unlinkAccount, unlinkEvm} from "@unlink-xyz/sdk";
 import type {Address, PublicClient, WalletClient} from "viem";

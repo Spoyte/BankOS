@@ -31,6 +31,11 @@ export class Attester {
     const rpcUrl = process.env.RPC_URL ?? "http://127.0.0.1:8545";
     const chain = chainById(chainId);
 
+    // Fail fast on a real chain: never sign Arc attestations with the local anvil fallback key / localhost RPC.
+    if (chainId !== 31337 && (!process.env.ATTESTER_PRIVATE_KEY || !process.env.RPC_URL)) {
+      throw new Error(`[cre-policy] chainId ${chainId} requires ATTESTER_PRIVATE_KEY and RPC_URL to be set — refusing anvil defaults`);
+    }
+
     const depPath =
       process.env.DEPLOYMENT_PATH ??
       join(__dir, "..", "..", "contracts", "deployments", `${chainId}.json`);

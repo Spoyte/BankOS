@@ -18,9 +18,11 @@ import {Ownable} from "solady/auth/Ownable.sol";
 ///           verified the spender's EdDSA-signed shielded balance off-chain. The nullifier prevents
 ///           double-spends.
 ///
-///         In the live deployment this is the Unlink-operated pool reached through the Unlink SDK;
-///         locally it is paired with our engine emulator so the full deposit -> private transfer ->
-///         withdraw flow settles on-chain without a hosted engine.
+///         This deployed contract IS the on-chain settlement pool (our PrivacyPool). In BankOS it is
+///         paired with our own shielded-ledger engine (real @unlink-xyz/sdk crypto, emulated ledger)
+///         acting as the relayer, so the full deposit -> private transfer -> withdraw flow settles on
+///         Arc. A production Unlink integration would instead point the relayer at the Unlink-operated
+///         pool/engine reached through the Unlink SDK.
 contract PrivacyPool is ReentrancyGuard, Ownable {
     using SafeTransferLib for address;
 

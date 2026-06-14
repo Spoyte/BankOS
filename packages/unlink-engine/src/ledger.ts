@@ -29,6 +29,9 @@ export class ShieldedLedger {
   private accounts = new Map<string, Account>();
   private deposits: DepositRecord[] = [];
   private nullifiers = new Set<string>();
+  // Accounts with an in-flight withdrawal (on-chain settlement pending). Blocks concurrent spends so a
+  // withdrawal's balance/nonce/nullifier are only mutated AFTER its on-chain tx confirms (atomicity).
+  private withdrawInFlight = new Set<string>();
 
   register(unlinkAddress: string, spendingPublicKey: [bigint, bigint]) {
     if (!this.accounts.has(unlinkAddress)) {
@@ -88,6 +91,7 @@ export class ShieldedLedger {
     sig: EdDSASignature;
   }) {
     const acct = this.require(params.from);
+    if (this.withdrawInFlight.has(params.from)) throw new Error("a withdrawal is settling on-chain; retry shortly");
     if (params.nonce !== acct.nonce) throw new Error(`bad nonce: expected ${acct.nonce}`);
     if (!this.isRegistered(params.to)) throw new Error("recipient not registered");
 
@@ -115,6 +119,7 @@ export class ShieldedLedger {
     sig: EdDSASignature;
   }) {
     const acct = this.require(params.unlinkAddress);
+    if (this.withdrawInFlight.has(params.unlinkAddress)) throw new Error("a withdrawal is settling on-chain; retry shortly");
     if (params.nonce !== acct.nonce) throw new Error(`bad nonce: expected ${acct.nonce}`);
 
     const msg = transferMessage(params.unlinkAddress, params.amountIn, params.nonce);
@@ -127,10 +132,13 @@ export class ShieldedLedger {
   }
 
   /**
-   * Verify + apply a withdrawal: debits the shielded balance and returns the on-chain nullifier so
-   * the engine relayer can settle `PrivacyPool.withdraw(recipient, amount, nullifier)`.
+   * Withdrawal step 1 — VALIDATE ONLY (no balance mutation). Verifies the nonce, signature, nullifier
+   * freshness and sufficient balance, marks the account in-flight, and returns the nullifier the relayer
+   * will settle. Crucially it does NOT debit: if the on-chain `PrivacyPool.withdraw` later fails, the
+   * shielded balance is untouched (no loss of funds). Caller MUST follow with `commitWithdraw` on a
+   * confirmed receipt, or `abortWithdraw` on failure.
    */
-  async prepareWithdraw(params: {
+  async validateWithdraw(params: {
     from: string;
     recipientEvm: string;
     token: string;
@@ -139,6 +147,7 @@ export class ShieldedLedger {
     sig: EdDSASignature;
   }): Promise<{nullifier: `0x${string}`}> {
     const acct = this.require(params.from);
+    if (this.withdrawInFlight.has(params.from)) throw new Error("a withdrawal is already settling for this account");
     if (params.nonce !== acct.nonce) throw new Error(`bad nonce: expected ${acct.nonce}`);
 
     const msg = withdrawMessage(params.recipientEvm, params.amount, params.nonce);
@@ -147,11 +156,31 @@ export class ShieldedLedger {
 
     const nullifier = withdrawNullifier(params.from, params.nonce);
     if (this.nullifiers.has(nullifier)) throw new Error("nullifier already used");
+    if (this.balanceOf(params.from, params.token) < params.amount) {
+      throw new Error("insufficient shielded balance");
+    }
 
-    this.debit(params.from, params.token, params.amount);
-    this.nullifiers.add(nullifier);
-    acct.nonce += 1n;
+    this.withdrawInFlight.add(params.from);
     return {nullifier};
+  }
+
+  /** Withdrawal step 2 — COMMIT, only after the on-chain settlement is confirmed: debit, burn the
+   *  nullifier, bump the nonce, release the in-flight lock. */
+  commitWithdraw(params: {from: string; token: string; amount: bigint; nonce: bigint; nullifier: `0x${string}`}) {
+    const acct = this.require(params.from);
+    // Defensive re-checks (the in-flight lock should already guarantee these held since validate).
+    if (acct.nonce !== params.nonce) throw new Error("account nonce changed during settlement");
+    if (this.nullifiers.has(params.nullifier)) throw new Error("nullifier already used");
+    this.debit(params.from, params.token, params.amount);
+    this.nullifiers.add(params.nullifier);
+    acct.nonce += 1n;
+    this.withdrawInFlight.delete(params.from);
+  }
+
+  /** Withdrawal abort — release the in-flight lock when the on-chain settlement failed. Nothing was
+   *  debited, so the shielded balance and nonce are unchanged and the member can retry. */
+  abortWithdraw(from: string) {
+    this.withdrawInFlight.delete(from);
   }
 
   stats() {

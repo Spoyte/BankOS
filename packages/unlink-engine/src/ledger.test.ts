@@ -66,27 +66,50 @@ describe("ShieldedLedger", () => {
     await expect(signedTransfer(alice, "unlink1qunknown", 1n, 0n)).rejects.toThrow(/not registered/);
   });
 
-  it("prepares a withdrawal: debits balance, returns a unique nullifier, advances nonce", async () => {
+  const DEAD = "0x000000000000000000000000000000000000dEaD";
+
+  it("validateWithdraw verifies + locks but does NOT mutate until commit (atomicity)", async () => {
     ledger.applyDeposit({unlinkAddress: alice.address, token: TOKEN, amount: 1_000_000n, commitment: "0x0", txHash: "0x0"});
-    const sig = await sign(alice.spendingPrivateKey, withdrawMessage("0x000000000000000000000000000000000000dEaD", 400_000n, 0n));
-    const {nullifier} = await ledger.prepareWithdraw({
-      from: alice.address,
-      recipientEvm: "0x000000000000000000000000000000000000dEaD",
-      token: TOKEN,
-      amount: 400_000n,
-      nonce: 0n,
-      sig,
-    });
+    const sig = await sign(alice.spendingPrivateKey, withdrawMessage(DEAD, 400_000n, 0n));
+    const {nullifier} = await ledger.validateWithdraw({from: alice.address, recipientEvm: DEAD, token: TOKEN, amount: 400_000n, nonce: 0n, sig});
     expect(nullifier).toMatch(/^0x[0-9a-f]{64}$/);
+    // validate must NOT debit or advance the nonce (so a failed on-chain tx loses nothing)
+    expect(ledger.balanceOf(alice.address, TOKEN)).toBe(1_000_000n);
+    expect(ledger.nonceOf(alice.address)).toBe(0n);
+    // commit (only after a confirmed receipt) applies the debit + burns the nullifier
+    ledger.commitWithdraw({from: alice.address, token: TOKEN, amount: 400_000n, nonce: 0n, nullifier});
     expect(ledger.balanceOf(alice.address, TOKEN)).toBe(600_000n);
     expect(ledger.nonceOf(alice.address)).toBe(1n);
+    expect(ledger.stats().nullifiers).toBe(1);
+  });
+
+  it("aborting a failed settlement leaves balance/nonce/nullifier untouched and allows retry", async () => {
+    ledger.applyDeposit({unlinkAddress: alice.address, token: TOKEN, amount: 1_000_000n, commitment: "0x0", txHash: "0x0"});
+    const sig = await sign(alice.spendingPrivateKey, withdrawMessage(DEAD, 400_000n, 0n));
+    await ledger.validateWithdraw({from: alice.address, recipientEvm: DEAD, token: TOKEN, amount: 400_000n, nonce: 0n, sig});
+    ledger.abortWithdraw(alice.address); // simulate the on-chain PrivacyPool.withdraw reverting
+    expect(ledger.balanceOf(alice.address, TOKEN)).toBe(1_000_000n);
+    expect(ledger.nonceOf(alice.address)).toBe(0n);
+    expect(ledger.stats().nullifiers).toBe(0);
+    // lock released — the member can retry the same withdrawal
+    const sig2 = await sign(alice.spendingPrivateKey, withdrawMessage(DEAD, 400_000n, 0n));
+    await expect(
+      ledger.validateWithdraw({from: alice.address, recipientEvm: DEAD, token: TOKEN, amount: 400_000n, nonce: 0n, sig: sig2}),
+    ).resolves.toBeDefined();
+  });
+
+  it("blocks a concurrent spend while a withdrawal is settling on-chain", async () => {
+    ledger.applyDeposit({unlinkAddress: alice.address, token: TOKEN, amount: 1_000_000n, commitment: "0x0", txHash: "0x0"});
+    const sig = await sign(alice.spendingPrivateKey, withdrawMessage(DEAD, 400_000n, 0n));
+    await ledger.validateWithdraw({from: alice.address, recipientEvm: DEAD, token: TOKEN, amount: 400_000n, nonce: 0n, sig});
+    await expect(signedTransfer(alice, bob.address, 1n, 0n)).rejects.toThrow(/settling on-chain/);
   });
 
   it("rejects a withdrawal with a forged signature", async () => {
     ledger.applyDeposit({unlinkAddress: alice.address, token: TOKEN, amount: 1_000_000n, commitment: "0x0", txHash: "0x0"});
     const sig = await sign(bob.spendingPrivateKey, withdrawMessage("0xdEaD", 1n, 0n)); // bob signs alice's withdraw
     await expect(
-      ledger.prepareWithdraw({from: alice.address, recipientEvm: "0x000000000000000000000000000000000000dEaD", token: TOKEN, amount: 1n, nonce: 0n, sig}),
+      ledger.validateWithdraw({from: alice.address, recipientEvm: DEAD, token: TOKEN, amount: 1n, nonce: 0n, sig}),
     ).rejects.toThrow(/invalid EdDSA signature/);
   });
 });

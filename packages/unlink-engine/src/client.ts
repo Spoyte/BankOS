@@ -1,8 +1,12 @@
 /**
  * UnlinkClient — the privacy surface the BankOS app codes against. Two implementations:
  *
- *   - LocalUnlinkClient: drives the local engine emulator + on-chain PrivacyPool (offline demo).
- *   - LiveUnlinkClient:  wraps the real hosted Unlink engine via `@unlink-xyz/sdk` createUnlink().
+ *   - LocalUnlinkClient: drives our shielded-ledger ENGINE EMULATOR + the real on-chain PrivacyPool.
+ *       This is what the demo runs (emulator hosted on Fly). It uses real `@unlink-xyz/sdk` account
+ *       crypto (EdDSA/poseidon, unlink1… addresses) and settles deposits/withdrawals on Arc, but the
+ *       shielded ledger between shield and withdraw is EMULATED, not Unlink's production engine.
+ *   - LiveUnlinkClient:  the optional path to Unlink's real hosted engine via `@unlink-xyz/sdk`
+ *       createUnlink() (gated on UNLINK_ENGINE_URL + UNLINK_API_KEY) — NOT exercised in the demo.
  *
  * Both share the same real Unlink account model (unlink1… addresses, EdDSA, poseidon) from account.ts,
  * so switching providers does not change account identity.
