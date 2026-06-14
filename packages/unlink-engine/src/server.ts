@@ -176,9 +176,10 @@ app.post("/withdraw", async (req, res) => {
   }
 });
 
-const PORT = Number(process.env.ENGINE_PORT ?? 4002);
-app.listen(PORT, () => {
-  console.log(`Charter Unlink engine (emulator) on http://127.0.0.1:${PORT}`);
+// Railway/Render/Fly inject PORT; honor it first, then the app-specific override, then the local default.
+const PORT = Number(process.env.PORT ?? process.env.ENGINE_PORT ?? 4002);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`BankOS Unlink engine (emulator) on :${PORT}`);
   console.log(`  relayer:     ${relayer.address}`);
   console.log(`  privacyPool: ${dep.privacyPool}`);
 });

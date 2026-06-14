@@ -6,7 +6,10 @@ import {evaluateCompliance} from "./compliance.js";
 import {Attester} from "./attester.js";
 import {reviewTreasuryMove, agentEnabled, type AgentReviewInput} from "./treasuryAgent.js";
 
-const evmAddress = z.string().regex(/^0x[0-9a-fA-F]{40}$/, "invalid EVM address");
+const evmAddress = z
+  .string()
+  .regex(/^0x[0-9a-fA-F]{40}$/, "invalid EVM address")
+  .transform((v) => v as Address);
 const kycSchema = z.object({
   fullName: z.string().min(1).max(120),
   country: z.string().min(2).max(8),
@@ -125,9 +128,10 @@ app.post("/revoke", async (req, res) => {
   }
 });
 
-const PORT = Number(process.env.POLICY_PORT ?? 4001);
-app.listen(PORT, () => {
-  console.log(`Charter policy service (CRE DON simulator) on http://127.0.0.1:${PORT}`);
+// Railway/Render/Fly inject PORT; honor it first, then the app-specific override, then the local default.
+const PORT = Number(process.env.PORT ?? process.env.POLICY_PORT ?? 4001);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`BankOS policy service (CRE DON simulator) on :${PORT}`);
   console.log(`  attester:       ${attester.account.address}`);
   console.log(`  policyRegistry: ${attester.registry}`);
 });
