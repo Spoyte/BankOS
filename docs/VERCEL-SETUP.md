@@ -18,8 +18,8 @@ else I've already wired (`vercel.json`, build scripts, env-driven config).
    |---|---|---|
    | `VITE_CHAIN_ID` | `5042002` | yes (targets Arc testnet) |
    | `VITE_RPC_URL` | `https://rpc.testnet.arc.network` | optional (has a fallback) |
-   | `VITE_POLICY_URL` | your hosted policy URL (step 2) | for KYC onboarding |
-   | `VITE_ENGINE_URL` | your hosted engine URL (step 2) | for private balances |
+   | `VITE_POLICY_URL` | `https://bankos-cre-policy.fly.dev` | for KYC onboarding (live on Fly ✅) |
+   | `VITE_ENGINE_URL` | `https://bankos-unlink-engine.fly.dev` | for private balances (live on Fly ✅) |
    | `VITE_DYNAMIC_ENVIRONMENT_ID` | from the Dynamic dashboard (step 3) | for passkey onboarding |
    | `VITE_ENABLE_LIFI` | `true` | optional (treasury route preview) |
 
@@ -31,33 +31,34 @@ That's it for the static site — every push to the repo auto-deploys.
 
 ---
 
-## 2. Backends — CRE policy service + Unlink engine
+## 2. Backends — deployed to Fly.io ✅ (me)
 
-Two small Express apps need to run somewhere with the **Arc deployer key** (they sign Arc txs as the
-attester / relayer). They hold in-memory state (the Unlink shielded ledger), so they need a **stateful
-host** — Railway, Render, Fly.io, or any small VM. They are *not* a good fit for serverless.
+The two Express apps — **`@bankos/cre-policy`** (Chainlink-CRE attester) and **`@bankos/unlink-engine`**
+(Unlink privacy relayer) — are **already deployed on Fly.io**, always-on, pointed at Arc:
 
-**`@bankos/cre-policy`** (the Chainlink-CRE attester, default port 4001) and **`@bankos/unlink-engine`**
-(the privacy relayer, default port 4002). For each, set:
+| Service | URL | Fly app |
+|---|---|---|
+| CRE policy | `https://bankos-cre-policy.fly.dev` | `bankos-cre-policy` |
+| Unlink engine | `https://bankos-unlink-engine.fly.dev` | `bankos-unlink-engine` |
 
+They hold in-memory state (the Unlink shielded ledger), so each runs as a **single always-on machine**
+(`--ha=false`, `auto_stop_machines = "off"`) — never scale them past 1. Config lives in
+[`fly.cre-policy.toml`](../fly.cre-policy.toml) / [`fly.unlink-engine.toml`](../fly.unlink-engine.toml)
+and the shared [`Dockerfile`](../Dockerfile). Non-secret env (`CHAIN_ID`, `RPC_URL`, `PORT=8080`) is in
+the toml; the Arc signer key is a **Fly secret** (`ATTESTER_PRIVATE_KEY` / `ENGINE_PRIVATE_KEY`), set from
+gitignored `.secrets/arc-deployer.env` — never committed.
+
+```bash
+# redeploy after a change (run from repo root)
+~/.fly/bin/flyctl deploy -c fly.cre-policy.toml    --remote-only --ha=false
+~/.fly/bin/flyctl deploy -c fly.unlink-engine.toml --remote-only --ha=false
+# health checks
+curl https://bankos-cre-policy.fly.dev/health
+curl https://bankos-unlink-engine.fly.dev/health
 ```
-CHAIN_ID=5042002
-RPC_URL=https://rpc.testnet.arc.network
-DEPLOYMENT_PATH=/app/packages/contracts/deployments/5042002.json   # committed after Arc deploy
-ATTESTER_PRIVATE_KEY=<the Arc deployer key>     # cre-policy only
-ENGINE_PRIVATE_KEY=<the Arc deployer key>       # unlink-engine only
-PORT=<host-assigned>                             # cre-policy reads POLICY_PORT / unlink reads ENGINE_PORT
-ANTHROPIC_API_KEY=<optional>                      # enables the Claude-backed treasury agent
-```
 
-Start commands: `npm run -w @bankos/cre-policy start` and `npm run -w @bankos/unlink-engine start`.
-The Arc deployer key is in `.secrets/arc-deployer.env` (gitignored) — paste it into the host's secret
-manager, don't commit it. Put the two resulting URLs into `VITE_POLICY_URL` / `VITE_ENGINE_URL` above.
-
-> **Tell me your host of choice** (Railway/Render/Fly) and I'll add the config (a `Procfile`/`render.yaml`
-> /`fly.toml`) and a one-command deploy. If you'd rather demo the hosted frontend against a *local*
-> backend, run `bash scripts/demo.sh` and tunnel `:4001`/`:4002` (e.g. `cloudflared`/`ngrok`), then point
-> the two `VITE_*_URL` envs at the tunnels.
+Optional: set `ANTHROPIC_API_KEY` on the policy app to enable the Claude-backed treasury agent —
+`flyctl secrets set ANTHROPIC_API_KEY=… -a bankos-cre-policy`.
 
 ---
 
@@ -69,20 +70,22 @@ manager, don't commit it. Put the two resulting URLs into `VITE_POLICY_URL` / `V
 
 ---
 
-## 4. Arc deploy (me, once you fund the key)
+## 4. Arc deploy ✅ (done)
 
-See [`ARC-DEPLOY.md`](./ARC-DEPLOY.md) — fund `0xC87BFb1081b328E39D6836EAE1488dEb444DFDD4` with ~10
-Arc-testnet USDC and I run `bash scripts/deploy-arc.sh`, commit `deployments/5042002.json`, and the Vercel
-build picks up the real addresses on the next push.
+Contracts are **live on Arc testnet** (chainId `5042002`); addresses are committed in
+[`packages/contracts/deployments/5042002.json`](../packages/contracts/deployments/5042002.json), so the
+Vercel build picks them up automatically. Deployer `0xC87BFb1081b328E39D6836EAE1488dEb444DFDD4` (also the
+CRE attester + Unlink relayer). Re-deploy with `bash scripts/deploy-arc.sh`.
 
 ---
 
 ## Summary — your action items
 
-- [ ] **Fund** `0xC87BFb1081b328E39D6836EAE1488dEb444DFDD4` with Arc-testnet USDC → tell me "funded".
-- [ ] **Import** the GitHub repo into Vercel + set the env vars (step 1).
-- [ ] **Pick a host** for the two backends (step 2) — or tell me to use tunnels for the demo.
-- [ ] *(optional)* Create a **Dynamic** project + add Arc network (step 3).
+Almost everything is done. **Your one remaining step:**
 
-Everything else (Arc contract deploy, committing addresses, backend configs for your chosen host) I'll
-handle.
+- [ ] **Import `Spoyte/BankOS` into Vercel** + set the env vars from step 1 (most importantly
+      `VITE_CHAIN_ID=5042002`, `VITE_POLICY_URL`, `VITE_ENGINE_URL` — the Fly URLs are already filled in).
+- [ ] *(optional)* Create a **Dynamic** project + add Arc network (step 3) for real passkey onboarding.
+
+Done for you: ✅ Arc contracts deployed · ✅ addresses committed · ✅ both backends live on Fly.io ·
+✅ repo on GitHub (`Spoyte/BankOS`).
