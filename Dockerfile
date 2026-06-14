@@ -5,11 +5,7 @@
 # compile step: install the workspace, then `npm run -w @bankos/<service> start`.
 FROM node:20-slim
 
-# Build tools for any native deps pulled by the workspace (e.g. Unlink crypto libs).
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
-
+# All workspace deps are pure JS (no native addons), so no build toolchain is needed.
 WORKDIR /app
 
 # Install against the committed lockfile. tsx is a runtime dep, so --omit=dev keeps it
