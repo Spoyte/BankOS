@@ -26,18 +26,26 @@ composes them into one stack: **social trust on top, cryptographic guard-rails u
 | **Settlement** | **Arc** | USDC-native L1; balances, fees, and credit denominated in dollars. |
 | **Treasury routing** *(stretch)* | **LI.FI** | Same-chain Arc swap-calldata **preview** for idle-reserve routing (execution through the Unlink burner is not yet wired) — feature-flagged (see [ADR-001](docs/ADR-001-lifi-poc.md)). |
 
-## What's built (all working)
+## What's built
 
 - **5 core contracts** + 2 mocks on solady — `CharterFactory · Bank · PolicyRegistry · ExecutionRouter
-  · PrivacyPool`. **35/35 Foundry tests pass.** Deploys to local Arc / Arc testnet.
-- **Chainlink CRE compliance** — a production CRE workflow (Confidential HTTP → `writeReport` →
-  `PolicyRegistry.onReport`) *and* a local DON simulator that lands real on-chain attestations.
-- **Unlink privacy** — real `@unlink-xyz/sdk` accounts (`unlink1…`, EdDSA, poseidon) over a shielded
-  ledger + on-chain `PrivacyPool`. CLI demo proves **shield → private transfer (hidden) → withdraw**.
-- **Dynamic-powered web app** — operator console, member app, steward treasury desk. Runs offline with
-  local personas, or flip one env var for real Dynamic embedded wallets.
-- **LI.FI PoC** — verified same-chain Arc routing; shipped as a feature-flagged *route-preview* module
-  (calldata preview only; burner execution not yet wired).
+  · PrivacyPool`. **40/40 Foundry tests pass.** Deployed to local Anvil **and live on Arc testnet**
+  (chainId 5042002; addresses in `packages/contracts/deployments/5042002.json`).
+- **Chainlink CRE compliance** — a real CRE workflow that **runs under `cre workflow simulate`**
+  (compiles to WASM, HTTP-triggered screening, `Confidential HTTP → writeReport → PolicyRegistry.onReport`),
+  *and* a local DON simulator that lands real on-chain attestations. The workflow is **not yet deployed to
+  a live DON**.
+- **Unlink privacy** — real `@unlink-xyz/sdk` account cryptography (`unlink1…`, EdDSA, poseidon) and real
+  on-chain `PrivacyPool` deposit/withdraw on Arc. The shielded ledger between shield and withdraw is **our
+  in-memory emulator** (hosted on Fly); the browser uses `LocalUnlinkClient` against that emulator, **not**
+  Unlink's production hosted engine. CLI demo proves **shield → private transfer (hidden) → withdraw**.
+- **Dynamic-powered web app** — operator console, member app, steward treasury desk. **Passkey embedded-wallet
+  onboarding is enabled in the hosted production deployment** (`VITE_DYNAMIC_ENVIRONMENT_ID` set); runs offline
+  with local personas when that env var is absent.
+- **10 product features shipped** (`docs/FEATURES.md`) including recurring private payroll, selective-disclosure
+  bank-signed statements, reputation-based credit, inter-bank settlement, and EURC/FX in the shielded ledger.
+- **LI.FI PoC** — verified same-chain Arc routing-calldata; shipped as a feature-flagged *route-preview* module
+  (calldata preview only; burner execution not wired). Not submitted as a sponsor integration.
 
 ## Quick start
 
@@ -63,10 +71,12 @@ npm run web:dev               # the app
 Standalone proofs:
 
 ```bash
-npm run verify                            # contracts tests + web typecheck + web build, one command
+npm run verify                            # Foundry tests + vitest + web typecheck + web build, one command
 npm run lifi:poc                          # LI.FI Arc routing feasibility (ADR-001)
 npm run -w @bankos/unlink-engine demo    # shield → private transfer → withdraw (privacy proof)
-npm run contracts:test                    # 35 Foundry tests
+npm run contracts:test                    # 40 Foundry tests
+npm run test:unit                         # 48 vitest tests (cre-policy + unlink-engine)
+bash scripts/verify-arc.sh                # key-free Arc read-back proof (on-chain PrivacyPool.relayer() + Fly health)
 ```
 
 > Running the privacy demo standalone? Make sure the engine isn't serving a **stale deployment**: run
@@ -95,7 +105,7 @@ npm run contracts:test                    # 35 Foundry tests
 
 ```
 packages/
-  contracts/      Foundry — 5 contracts, mocks, 35-test suite, deploy script
+  contracts/      Foundry — 5 contracts, mocks, 40-test suite, deploy script
   shared/         Arc chain config, exported ABIs, shared TS types
   cre-policy/     Chainlink CRE workflow + local DON simulator (attester) + seed
   unlink-engine/  Unlink engine emulator + real-SDK client (Local + Live) + privacy demo
