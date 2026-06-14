@@ -33,19 +33,20 @@ export function MemberPanel({bank, onChange, version}: {bank: BankInfo; onChange
 
   const eligible = policy.data?.canDeposit && (policy.data.expiry === 0 || policy.data.expiry * 1000 > Date.now());
 
+  // Private by default (feature #2): the shielded balance is the headline; transparent checking is opt-in.
   return (
     <div className="grid cols-2" style={{alignItems: "start"}}>
       <div>
         <ComplianceCard bank={bank} policy={policy.data} onChange={() => {policy.refresh(); onChange();}} />
-        {eligible && bank.products.checking && (
-          <CheckingCard bank={bank} member={member} onChange={onChange} />
-        )}
+        <PrivateBalanceCard bank={bank} eligible={!!eligible} onChange={onChange} />
+      </div>
+      <div>
         {eligible && bank.products.credit && policy.data?.canBorrow && (
           <CreditCard bank={bank} member={member} onChange={onChange} />
         )}
-      </div>
-      <div>
-        <PrivateBalanceCard bank={bank} eligible={!!eligible} onChange={onChange} />
+        {eligible && bank.products.checking && (
+          <CheckingCard bank={bank} member={member} onChange={onChange} />
+        )}
       </div>
     </div>
   );
@@ -156,7 +157,11 @@ function CheckingCard({bank, member, onChange}: {bank: BankInfo; member: any; on
   }
 
   return (
-    <Section title="Public checking" icon="💵">
+    <Section title="Transparent checking" icon="💵" action={<Badge tone="amber">optional · public</Badge>}>
+      <div className="hint" style={{marginTop: 0, marginBottom: 8}}>
+        Balances here are <strong>publicly visible</strong> on-chain. Your bank balance is private by
+        default (left) — use transparent checking only if you want a publicly-auditable balance.
+      </div>
       <div className="kv"><span className="k">Your deposit balance</span><span className="val">{m ? <Money v={m.deposit} /> : "…"}</span></div>
       <div className="kv">
         <span className="k">Earned savings (yield) <span className="private-tag">APY</span></span>
@@ -326,7 +331,7 @@ function PrivateBalanceCard({bank, eligible, onChange}: {bank: BankInfo; eligibl
   const payrollTotal = payroll.reduce((s, r) => s + (Number(r.amount) > 0 ? toUsdc(r.amount) : 0n), 0n);
 
   return (
-    <Section title="Private balance" icon="🔒" action={<Badge tone="brand">Unlink</Badge>}>
+    <Section title="Private balance" icon="🔒" action={<><Badge tone="green">default</Badge> <Badge tone="brand">Unlink</Badge></>}>
       {!eligible ? (
         <div className="muted">Complete compliance to use private banking.</div>
       ) : !client ? (
