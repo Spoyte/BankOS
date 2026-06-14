@@ -1,4 +1,4 @@
-# Charter — Roadmap / what's left
+# BankOS — Roadmap / what's left
 
 Status legend: ✅ done · 🟡 in progress · ⬜ todo · �groups what needs **you** (external resources).
 

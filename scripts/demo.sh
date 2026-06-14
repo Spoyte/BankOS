@@ -78,26 +78,26 @@ node scripts/export-abis.mjs >/dev/null
 node scripts/sync-web.mjs >/dev/null
 
 echo "▸ 4/7 Chainlink CRE policy service (:4001)…"
-nohup npm run -s -w @charter/cre-policy start >"$LOG/policy.log" 2>&1 &
+nohup npm run -s -w @bankos/cre-policy start >"$LOG/policy.log" 2>&1 &
 echo $! >> "$PIDS"
 wait_for http://127.0.0.1:4001/health "policy service" || exit 1
 assert_env http://127.0.0.1:4001/health policyRegistry || { echo "→ run: bash scripts/demo.sh stop, then retry"; exit 1; }
 
 echo "▸ 5/7 Unlink engine (:4002)…"
-nohup npm run -s -w @charter/unlink-engine start >"$LOG/engine.log" 2>&1 &
+nohup npm run -s -w @bankos/unlink-engine start >"$LOG/engine.log" 2>&1 &
 echo $! >> "$PIDS"
 wait_for http://127.0.0.1:4002/info/environment "unlink engine" || exit 1
 assert_env http://127.0.0.1:4002/info/environment privacyPool || { echo "→ run: bash scripts/demo.sh stop, then retry"; exit 1; }
 
 echo "▸ 6/7 seed demo bank…"
-if npm run -s -w @charter/cre-policy seed >"$LOG/seed.log" 2>&1; then
+if npm run -s -w @bankos/cre-policy seed >"$LOG/seed.log" 2>&1; then
   grep -E "bank =|totalAssets|utilization" "$LOG/seed.log" || true
 else
   echo "!! seed failed (see $LOG/seed.log) — continuing, but demo state is incomplete."
 fi
 
 echo "▸ 7/7 web app…"
-nohup npm run -s -w @charter/web dev >"$LOG/web.log" 2>&1 &
+nohup npm run -s -w @bankos/web dev >"$LOG/web.log" 2>&1 &
 echo $! >> "$PIDS"
 WEB_URL=""
 for _ in $(seq 1 30); do
@@ -123,7 +123,7 @@ cat <<EOF
     • As "Dave (new member)" → open the bank → onboard (KYC) → deposit.
     • Use the 🔒 Private balance card to shield, send a private transfer, and withdraw.
 
-  Privacy CLI demo:  npm run -w @charter/unlink-engine demo
+  Privacy CLI demo:  npm run -w @bankos/unlink-engine demo
   Stop everything:   bash scripts/demo.sh stop
 ──────────────────────────────────────────────────────────────
 EOF

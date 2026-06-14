@@ -9,8 +9,8 @@ import {readFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 import {dirname, join} from "node:path";
 import {type Address, type Hex} from "viem";
-import {abis} from "@charter/shared/abis";
-import {toUsdc, fromUsdc, type Deployment} from "@charter/shared";
+import {abis} from "@bankos/shared/abis";
+import {toUsdc, fromUsdc, type Deployment} from "@bankos/shared";
 import {publicClient, wallet, ANVIL, addr} from "./accounts.js";
 import {evaluateCompliance, type KycPayload} from "./compliance.js";
 

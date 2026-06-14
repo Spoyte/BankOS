@@ -1,4 +1,4 @@
-# Charter compliance workflow (Chainlink CRE)
+# BankOS compliance workflow (Chainlink CRE)
 
 This is the **production** compliance path. It is an HTTP-triggered CRE workflow that:
 
@@ -31,4 +31,4 @@ PolicyRegistry forwarder. The forwarder address must be authorized as an atteste
   (the EVM `writeReport`) environments.
 - It integrates a blockchain with an external system (the compliance provider).
 - It makes a **state change on-chain** (`PolicyRegistry.onReport` → stored `Policy`), used by every
-  Charter bank to gate deposits and credit — i.e. meaningfully used, not just read in a frontend.
+  BankOS bank to gate deposits and credit — i.e. meaningfully used, not just read in a frontend.

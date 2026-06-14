@@ -4,7 +4,7 @@ Captured from a clean run (`bash scripts/demo.sh` → fresh deploy + verified se
 
 ## Privacy CLI — shield → private transfer → withdraw
 
-`npm run -w @charter/unlink-engine demo`
+`npm run -w @bankos/unlink-engine demo`
 
 ```
 == Unlink privacy demo (shield → private transfer → withdraw) ==
@@ -47,7 +47,7 @@ utilization:     8%
 
 ## Notes on reproducibility (hardened after external review)
 
-- `scripts/demo.sh` now **always starts from a clean slate**: it stops prior Charter services + the demo
+- `scripts/demo.sh` now **always starts from a clean slate**: it stops prior BankOS services + the demo
   anvil, redeploys, and then asserts each service's `/info/environment` matches the freshly written
   `deployments/31337.json` before continuing. This prevents a stale engine/policy from serving an old
   deployment and silently passing health checks.

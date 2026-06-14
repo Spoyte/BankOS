@@ -1,6 +1,6 @@
 # Arc Testnet deployment — what I need from you
 
-To put Charter on the **real Arc testnet** (chainId `5042002`, USDC-native gas), I generated a fresh
+To put BankOS on the **real Arc testnet** (chainId `5042002`, USDC-native gas), I generated a fresh
 deployer account. **Please send it Arc-testnet USDC**, then I'll deploy with one command.
 
 ## 👉 Fund this address

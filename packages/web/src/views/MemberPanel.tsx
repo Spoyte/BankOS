@@ -1,7 +1,7 @@
 import {useEffect, useState} from "react";
 import type {Address} from "viem";
-import {toUsdc, fromUsdc} from "@charter/shared";
-import type {UnlinkClient} from "@charter/unlink-engine";
+import {toUsdc, fromUsdc} from "@bankos/shared";
+import type {UnlinkClient} from "@bankos/unlink-engine";
 import {useWallet} from "../wallet/WalletContext";
 import {useAsync, useNow} from "../hooks";
 import {

@@ -1,4 +1,4 @@
-import {chainById, type Deployment} from "@charter/shared";
+import {chainById, type Deployment} from "@bankos/shared";
 import deploymentJson from "./generated/deployment.json";
 
 export const deployment = deploymentJson as unknown as Deployment;

@@ -3,7 +3,7 @@
  * versus what stays private. Requires anvil + a deploy + the engine running (see scripts/demo.sh,
  * or: npm run engine:dev).
  *
- *   npm run -w @charter/unlink-engine demo
+ *   npm run -w @bankos/unlink-engine demo
  */
 import {readFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
@@ -18,8 +18,8 @@ import {
   type Hex,
 } from "viem";
 import {privateKeyToAccount} from "viem/accounts";
-import {abis} from "@charter/shared/abis";
-import {chainById, fromUsdc, toUsdc, type Deployment} from "@charter/shared";
+import {abis} from "@bankos/shared/abis";
+import {chainById, fromUsdc, toUsdc, type Deployment} from "@bankos/shared";
 import {deriveUnlinkAccount} from "./account.js";
 import {LocalUnlinkClient} from "./client.js";
 

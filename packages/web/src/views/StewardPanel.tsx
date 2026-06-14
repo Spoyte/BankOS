@@ -1,6 +1,6 @@
 import {useState} from "react";
 import type {Address} from "viem";
-import {toUsdc, fromUsdc, type Products} from "@charter/shared";
+import {toUsdc, fromUsdc, type Products} from "@bankos/shared";
 import {useWallet} from "../wallet/WalletContext";
 import {useAsync} from "../hooks";
 import {deployment, ENABLE_LIFI} from "../config";

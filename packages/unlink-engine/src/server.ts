@@ -1,5 +1,5 @@
 /**
- * Charter local Unlink engine emulator.
+ * BankOS local Unlink engine emulator.
  *
  * Mirrors the role of the hosted Unlink engine: it holds the shielded ledger, verifies EdDSA-signed
  * spends, and acts as the on-chain **relayer** that settles withdrawals from `PrivacyPool`. Deposits
@@ -23,8 +23,8 @@ import {
   type Hex,
 } from "viem";
 import {privateKeyToAccount} from "viem/accounts";
-import {abis} from "@charter/shared/abis";
-import {chainById, type Deployment} from "@charter/shared";
+import {abis} from "@bankos/shared/abis";
+import {chainById, type Deployment} from "@bankos/shared";
 import {ShieldedLedger} from "./ledger.js";
 import {deserializeSig} from "./account.js";
 

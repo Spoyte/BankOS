@@ -1,5 +1,5 @@
 {
-  "name": "@charter/cre-policy",
+  "name": "@bankos/cre-policy",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "seed": "tsx src/seed.ts"
   },
   "dependencies": {
-    "@charter/shared": "*",
+    "@bankos/shared": "*",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "viem": "^2.52.2",

@@ -1,6 +1,6 @@
 # Feature-ideas implementation status
 
-Tracks the parent [`../../docs/FEATURE-IDEAS.md`](../../docs/FEATURE-IDEAS.md) against the Charter build.
+Tracks the parent [`../../docs/FEATURE-IDEAS.md`](../../docs/FEATURE-IDEAS.md) against the BankOS build.
 
 | # | Feature | Status |
 |---|---|---|

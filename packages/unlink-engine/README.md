@@ -1,4 +1,4 @@
-# @charter/unlink-engine
+# @bankos/unlink-engine
 
 The privacy layer. Members hold **private checking balances** and move money **privately** using the
 real `@unlink-xyz/sdk` account model, settled against an on-chain `PrivacyPool`.
@@ -38,6 +38,6 @@ balances, or the link between a depositor and a later withdrawal.
 ## Run
 
 ```bash
-npm run -w @charter/unlink-engine dev    # engine on :4002
-npm run -w @charter/unlink-engine demo   # the privacy demo (needs anvil + deploy + engine)
+npm run -w @bankos/unlink-engine dev    # engine on :4002
+npm run -w @bankos/unlink-engine demo   # the privacy demo (needs anvil + deploy + engine)
 ```

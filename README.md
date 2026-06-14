@@ -1,24 +1,24 @@
-# Charter 🏦
+# BankOS 🏦
 
 **Charter your own private, compliant, self-custodial stablecoin bank on Arc — in minutes.**
 
-Charter is a *bank factory*: infrastructure that lets any operator ("steward") launch a branded,
+BankOS is a *bank factory*: infrastructure that lets any operator ("steward") launch a branded,
 rule-based stablecoin bank with **private balances** (Unlink), **programmable compliance**
 (Chainlink CRE), and **passkey onboarding** (Dynamic), settled in USDC on **Arc**. Members keep their
 own keys; the steward configures policy, never custody.
 
-> Not an FDIC-insured deposit bank. Charter is *banking infrastructure* / self-custodial bank rails.
+> Not an FDIC-insured deposit bank. BankOS is *banking infrastructure* / self-custodial bank rails.
 
-![Charter landing](docs/landing.png)
+![BankOS landing](docs/landing.png)
 
 ---
 
 ## The idea
 
-Community banking is dying while the need grows. The primitives to rebuild it now exist — Charter
+Community banking is dying while the need grows. The primitives to rebuild it now exist — BankOS
 composes them into one stack: **social trust on top, cryptographic guard-rails underneath.**
 
-| Layer | Sponsor | Role in Charter |
+| Layer | Sponsor | Role in BankOS |
 |---|---|---|
 | **Private balances & transfers** | **Unlink** | Members' checking balances and transfers live off the public ledger; treasury moves are shielded. |
 | **Compliance / policy** | **Chainlink CRE** | Confidential KYC / sanctions / eligibility in a TEE; only the *decision* (`Policy`) is attested on-chain. |
@@ -54,8 +54,8 @@ Or run pieces individually:
 npm run chain                 # local Arc (anvil) on :8545
 npm run deploy:local          # deploy + write deployments/31337.json
 npm run abis                  # export ABIs to shared
-npm run -w @charter/cre-policy dev      # Chainlink CRE policy service (:4001)
-npm run -w @charter/unlink-engine dev   # Unlink engine (:4002)
+npm run -w @bankos/cre-policy dev      # Chainlink CRE policy service (:4001)
+npm run -w @bankos/unlink-engine dev   # Unlink engine (:4002)
 npm run seed                  # charter a demo bank, onboard members, deposit, credit, yield
 npm run web:dev               # the app
 ```
@@ -65,7 +65,7 @@ Standalone proofs:
 ```bash
 npm run verify                            # contracts tests + web typecheck + web build, one command
 npm run lifi:poc                          # LI.FI Arc routing feasibility (ADR-001)
-npm run -w @charter/unlink-engine demo    # shield → private transfer → withdraw (privacy proof)
+npm run -w @bankos/unlink-engine demo    # shield → private transfer → withdraw (privacy proof)
 npm run contracts:test                    # 35 Foundry tests
 ```
 

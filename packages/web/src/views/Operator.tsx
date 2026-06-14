@@ -1,6 +1,6 @@
 import {useState} from "react";
 import type {Address} from "viem";
-import {toUsdc, type Products, type RiskConfig} from "@charter/shared";
+import {toUsdc, type Products, type RiskConfig} from "@bankos/shared";
 import {useWallet} from "../wallet/WalletContext";
 import {useAsync} from "../hooks";
 import {banksOfSteward, getBankInfo, charterBank} from "../lib/contracts";

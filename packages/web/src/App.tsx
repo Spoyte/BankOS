@@ -25,7 +25,7 @@ export function App() {
     <div className="app">
       <nav className="nav">
         <div className="logo">
-          <span className="mark">C</span> Charter
+          <span className="mark">B</span> BankOS
         </div>
         <div className="tabs">
           <button className={`tab ${view === "discover" && !bank ? "active" : ""}`} onClick={() => {setView("discover"); setBank(null);}}>
@@ -51,7 +51,7 @@ export function App() {
       )}
 
       <footer style={{marginTop: 60, textAlign: "center"}} className="faint">
-        Charter · private, compliant stablecoin banks on Arc · Unlink · Chainlink CRE · Dynamic
+        BankOS · private, compliant stablecoin banks on Arc · Unlink · Chainlink CRE · Dynamic
       </footer>
     </div>
   );

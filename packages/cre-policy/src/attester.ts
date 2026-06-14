@@ -9,8 +9,8 @@ import {privateKeyToAccount} from "viem/accounts";
 import {readFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 import {dirname, join} from "node:path";
-import {abis} from "@charter/shared/abis";
-import {chainById, type Deployment, type Policy} from "@charter/shared";
+import {abis} from "@bankos/shared/abis";
+import {chainById, type Deployment, type Policy} from "@bankos/shared";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 

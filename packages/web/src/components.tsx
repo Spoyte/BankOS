@@ -1,5 +1,5 @@
 import {useState, type ReactNode} from "react";
-import {fromUsdc} from "@charter/shared";
+import {fromUsdc} from "@bankos/shared";
 
 export function Money({v, sym = "USDC"}: {v: bigint; sym?: string}) {
   const s = fromUsdc(v);

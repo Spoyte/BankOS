@@ -1,6 +1,6 @@
-# Charter — Architecture
+# BankOS — Architecture
 
-Charter is a **bank factory**: infrastructure to launch branded, self-custodial, private, compliant
+BankOS is a **bank factory**: infrastructure to launch branded, self-custodial, private, compliant
 stablecoin banks on Arc. This document explains the layers, the contracts, and the end-to-end flows.
 
 ## Layered design
@@ -84,5 +84,5 @@ reflects accrued yield. LI.FI can supply same-chain swap calldata for this step 
 
 Members hold their own EVM keys (Dynamic embedded wallet) and their own Unlink spending key. The
 steward configures policy and risk but cannot move member funds arbitrarily — credit is capped, treasury
-is allow-listed, and withdrawals are member-initiated. Charter is *banking infrastructure*, not an
+is allow-listed, and withdrawals are member-initiated. BankOS is *banking infrastructure*, not an
 FDIC-insured deposit bank.

@@ -1,6 +1,6 @@
 import {parseEventLogs, type Address} from "viem";
-import {abis} from "@charter/shared/abis";
-import {fromUsdc} from "@charter/shared";
+import {abis} from "@bankos/shared/abis";
+import {fromUsdc} from "@bankos/shared";
 import {publicClient} from "../wallet/WalletContext";
 
 export interface ActivityItem {

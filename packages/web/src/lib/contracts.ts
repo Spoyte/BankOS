@@ -1,6 +1,6 @@
 import type {Address, Hex, PublicClient, WalletClient} from "viem";
-import {abis} from "@charter/shared/abis";
-import type {Products, RiskConfig} from "@charter/shared";
+import {abis} from "@bankos/shared/abis";
+import type {Products, RiskConfig} from "@bankos/shared";
 import {deployment} from "../config";
 import {publicClient} from "../wallet/WalletContext";
 

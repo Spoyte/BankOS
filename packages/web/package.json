@@ -1,5 +1,5 @@
 {
-  "name": "@charter/web",
+  "name": "@bankos/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,8 @@
     "sync": "node ../../scripts/sync-web.mjs"
   },
   "dependencies": {
-    "@charter/shared": "*",
-    "@charter/unlink-engine": "*",
+    "@bankos/shared": "*",
+    "@bankos/unlink-engine": "*",
     "@dynamic-labs/ethereum": "^4.20.0",
     "@dynamic-labs/sdk-react-core": "^4.20.0",
     "react": "^18.3.1",

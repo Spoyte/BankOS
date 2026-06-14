@@ -1,6 +1,6 @@
 import {createWalletClient, createPublicClient, http, type Hex, type Address} from "viem";
 import {privateKeyToAccount} from "viem/accounts";
-import {chainById} from "@charter/shared";
+import {chainById} from "@bankos/shared";
 
 const chainId = Number(process.env.CHAIN_ID ?? 31337);
 const rpcUrl = process.env.RPC_URL ?? "http://127.0.0.1:8545";

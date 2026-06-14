@@ -12,8 +12,8 @@ The main issue is not the core architecture. It is demo reproducibility: the one
 
 - `npm run contracts:test` passed: 35 Foundry tests, 0 failures.
 - `npm run lifi:poc` passed with network access: Arc Testnet is listed, same-chain USDC-to-EURC calldata is available, cross-chain Arbitrum-to-Arc was unavailable.
-- `npm -w @charter/web run typecheck` passed in the current working tree.
-- `npm -w @charter/web run build` passed in the current working tree.
+- `npm -w @bankos/web run typecheck` passed in the current working tree.
+- `npm -w @bankos/web run build` passed in the current working tree.
 - `bash scripts/demo.sh` deployed contracts and seeded a bank, but hit stale-service issues described below.
 
 ## Findings
@@ -75,7 +75,7 @@ Suggested fix:
 ## Recommended Next Steps
 
 1. Harden `scripts/demo.sh` so it cannot mix old services with new deployments.
-2. Re-run `npm run -w @charter/unlink-engine demo` from a fresh stack and record the output in `docs/`.
+2. Re-run `npm run -w @bankos/unlink-engine demo` from a fresh stack and record the output in `docs/`.
 3. Make LI.FI language match the current implementation, or wire the actual optional execution path.
 4. Lazy-load Dynamic in the web app to reduce the default local build.
 5. Add root-level `test`, `build`, and `typecheck` scripts so one command verifies contracts plus web type safety.

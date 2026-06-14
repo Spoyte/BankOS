@@ -1,4 +1,4 @@
-import {fromUsdc} from "@charter/shared";
+import {fromUsdc} from "@bankos/shared";
 import type {BankInfo} from "./contracts";
 import {POLICY_URL} from "../config";
 
@@ -39,7 +39,7 @@ export async function fetchClaudeReview(bank: BankInfo, proposal: TreasuryPropos
 }
 
 /**
- * Charter Treasury Agent — an autonomous policy engine that proposes how to deploy a bank's idle
+ * BankOS Treasury Agent — an autonomous policy engine that proposes how to deploy a bank's idle
  * reserve into yield while preserving a liquidity buffer. It only *proposes*; a human steward approves
  * the move on a Ledger device (Clear Signing) before it settles on-chain. That human-in-the-loop,
  * device-backed approval is the Ledger AI-agent pattern: the agent reasons, the steward signs.

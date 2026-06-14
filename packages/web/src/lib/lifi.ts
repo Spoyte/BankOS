@@ -1,4 +1,4 @@
-import {ARC_USDC_ERC20, ARC_EURC} from "@charter/shared";
+import {ARC_USDC_ERC20, ARC_EURC} from "@bankos/shared";
 import type {Address} from "viem";
 
 /**

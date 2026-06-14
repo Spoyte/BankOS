@@ -1,4 +1,4 @@
-# @charter/cre-policy
+# @bankos/cre-policy
 
 The compliance layer: a Chainlink CRE workflow plus a local DON simulator that share one decision
 brain (`src/compliance.ts`).
@@ -25,6 +25,6 @@ eligibility booleans, coarse jurisdiction tag, expiry).
 ## Run
 
 ```bash
-npm run -w @charter/cre-policy dev    # local DON simulator on :4001
-npm run -w @charter/cre-policy seed   # charter a demo bank + onboard members + deposit + credit + yield
+npm run -w @bankos/cre-policy dev    # local DON simulator on :4001
+npm run -w @bankos/cre-policy seed   # charter a demo bank + onboard members + deposit + credit + yield
 ```

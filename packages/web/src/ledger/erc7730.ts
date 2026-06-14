@@ -1,4 +1,4 @@
-import {fromUsdc} from "@charter/shared";
+import {fromUsdc} from "@bankos/shared";
 import type {Address} from "viem";
 import {CHAIN_ID} from "../config";
 
@@ -22,7 +22,7 @@ function descriptor(contract: Address, fn: string, intent: string, fields: Clear
   return {
     $schema: SCHEMA,
     context: {contract: {deployments: [{chainId: CHAIN_ID, address: contract}]}},
-    metadata: {owner: "Charter", info: {legalName: "Charter Bank Factory", url: "https://charter.example"}},
+    metadata: {owner: "BankOS", info: {legalName: "BankOS Bank Factory", url: "https://bankos.example"}},
     display: {
       formats: {
         [fn]: {

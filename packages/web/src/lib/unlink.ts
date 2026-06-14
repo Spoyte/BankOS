@@ -1,10 +1,10 @@
 import {keccak256, hexToBytes, type Address, type WalletClient} from "viem";
-import {deriveUnlinkAccount} from "@charter/unlink-engine/account";
-import {LocalUnlinkClient, type UnlinkClient} from "@charter/unlink-engine";
+import {deriveUnlinkAccount} from "@bankos/unlink-engine/account";
+import {LocalUnlinkClient, type UnlinkClient} from "@bankos/unlink-engine";
 import {ENGINE_URL, deployment} from "../config";
 import {publicClient} from "../wallet/WalletContext";
 
-const SEED_MESSAGE = "Charter • derive my private Unlink account (v1)";
+const SEED_MESSAGE = "BankOS • derive my private Unlink account (v1)";
 const cache = new Map<string, UnlinkClient>();
 
 /**

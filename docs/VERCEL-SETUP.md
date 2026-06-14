@@ -1,4 +1,4 @@
-# Hosting Charter — what you need to do
+# Hosting BankOS — what you need to do
 
 The repo is on your GitHub. This walks through getting the **frontend live on Vercel** and the **two
 backends** running, pointed at Arc testnet. Steps marked **🧑 you** need your account/login; everything
@@ -37,7 +37,7 @@ Two small Express apps need to run somewhere with the **Arc deployer key** (they
 attester / relayer). They hold in-memory state (the Unlink shielded ledger), so they need a **stateful
 host** — Railway, Render, Fly.io, or any small VM. They are *not* a good fit for serverless.
 
-**`@charter/cre-policy`** (the Chainlink-CRE attester, default port 4001) and **`@charter/unlink-engine`**
+**`@bankos/cre-policy`** (the Chainlink-CRE attester, default port 4001) and **`@bankos/unlink-engine`**
 (the privacy relayer, default port 4002). For each, set:
 
 ```
@@ -50,7 +50,7 @@ PORT=<host-assigned>                             # cre-policy reads POLICY_PORT 
 ANTHROPIC_API_KEY=<optional>                      # enables the Claude-backed treasury agent
 ```
 
-Start commands: `npm run -w @charter/cre-policy start` and `npm run -w @charter/unlink-engine start`.
+Start commands: `npm run -w @bankos/cre-policy start` and `npm run -w @bankos/unlink-engine start`.
 The Arc deployer key is in `.secrets/arc-deployer.env` (gitignored) — paste it into the host's secret
 manager, don't commit it. Put the two resulting URLs into `VITE_POLICY_URL` / `VITE_ENGINE_URL` above.
 

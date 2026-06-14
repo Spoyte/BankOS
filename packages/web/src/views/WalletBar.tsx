@@ -2,7 +2,7 @@ import {useWallet} from "../wallet/WalletContext";
 import {useAsync} from "../hooks";
 import {Money, useTx} from "../components";
 import {usdcBalance, mintUsdc} from "../lib/contracts";
-import {toUsdc} from "@charter/shared";
+import {toUsdc} from "@bankos/shared";
 
 export function WalletBar() {
   const wallet = useWallet();

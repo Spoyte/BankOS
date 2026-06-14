@@ -1,5 +1,5 @@
 /**
- * UnlinkClient — the privacy surface the Charter app codes against. Two implementations:
+ * UnlinkClient — the privacy surface the BankOS app codes against. Two implementations:
  *
  *   - LocalUnlinkClient: drives the local engine emulator + on-chain PrivacyPool (offline demo).
  *   - LiveUnlinkClient:  wraps the real hosted Unlink engine via `@unlink-xyz/sdk` createUnlink().
@@ -8,7 +8,7 @@
  * so switching providers does not change account identity.
  */
 import type {Address, Hex, PublicClient, WalletClient} from "viem";
-import {abis} from "@charter/shared/abis";
+import {abis} from "@bankos/shared/abis";
 import {
   type AccountKeys,
   depositCommitment,

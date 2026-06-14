@@ -1,5 +1,5 @@
 /**
- * Charter compliance workflow — Chainlink CRE (production path).
+ * BankOS compliance workflow — Chainlink CRE (production path).
  *
  * Trigger:        HTTP (a member submits a KYC application from the web app)
  * Confidential:   the raw KYC payload is sent to a compliance provider via **Confidential HTTP**,

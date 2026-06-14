@@ -1,9 +1,9 @@
 {
-  "name": "@charter/cre-workflow",
+  "name": "@bankos/cre-workflow",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Charter compliance workflow for the Chainlink CRE CLI (cre workflow simulate/deploy).",
+  "description": "BankOS compliance workflow for the Chainlink CRE CLI (cre workflow simulate/deploy).",
   "dependencies": {
     "@chainlink/cre-sdk": "^1.9.0",
     "viem": "^2.52.2"

@@ -1,5 +1,5 @@
 {
-  "name": "@charter/shared",
+  "name": "@bankos/shared",
   "version": "0.1.0",
   "type": "module",
   "main": "src/index.ts",

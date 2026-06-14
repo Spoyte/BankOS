@@ -16,7 +16,7 @@ async function ok(p: Promise<Response>): Promise<boolean> {
   }
 }
 
-/** Probe the three backends. Charter is always contract-backed; this shows whether the stack is live. */
+/** Probe the three backends. BankOS is always contract-backed; this shows whether the stack is live. */
 export async function getHealth(): Promise<Health> {
   const [block, policy, engine] = await Promise.all([
     publicClient.getBlockNumber().catch(() => undefined),
