@@ -53,6 +53,31 @@ export async function getBankActivity(bank: Address, limit = 12): Promise<Activi
   return items.slice(0, limit);
 }
 
+export interface CreditHistory {
+  repayments: number;
+  borrows: number;
+  totalRepaidUsdc: number;
+}
+
+/** A member's on-chain credit history (Borrowed/Repaid), used to score reputation (feature #8). */
+export async function getCreditHistory(bank: Address, member: Address): Promise<CreditHistory> {
+  const logs = await publicClient.getLogs({address: bank, fromBlock: 0n});
+  const decoded = parseEventLogs({abi: abis.Bank, logs}) as any[];
+  const mine = decoded.filter((l) => (l.args?.member as string)?.toLowerCase() === member.toLowerCase());
+  let repayments = 0;
+  let borrows = 0;
+  let totalRepaid = 0n;
+  for (const l of mine) {
+    if (l.eventName === "Repaid") {
+      repayments++;
+      totalRepaid += (l.args.amount as bigint) ?? 0n;
+    } else if (l.eventName === "Borrowed") {
+      borrows++;
+    }
+  }
+  return {repayments, borrows, totalRepaidUsdc: Number(fromUsdc(totalRepaid))};
+}
+
 /** Members of a bank, from MemberRegistered events (latest unlink pointer per address). */
 export async function getBankMembers(bank: Address): Promise<MemberRow[]> {
   const logs = await publicClient.getLogs({address: bank, fromBlock: 0n});

@@ -5,6 +5,7 @@ import type {Address} from "viem";
 import {evaluateCompliance} from "./compliance.js";
 import {Attester} from "./attester.js";
 import {reviewTreasuryMove, agentEnabled, type AgentReviewInput} from "./treasuryAgent.js";
+import {scoreReputation, recommendedLimitUsdc} from "./reputation.js";
 
 const evmAddress = z
   .string()
@@ -125,6 +126,26 @@ app.post("/revoke", async (req, res) => {
   } catch (e: any) {
     if (badRequest(res, e)) return;
     res.status(500).json({error: e?.message ?? "internal error"});
+  }
+});
+
+// Reputation-based credit (feature #8): score a member's repayment history into an unlocked limit.
+const reputationSchema = z.object({
+  repayments: z.number().int().min(0).max(100000),
+  borrows: z.number().int().min(0).max(100000),
+  totalRepaidUsdc: z.number().min(0),
+  currentDebtUsdc: z.number().min(0),
+  creditCapUsdc: z.number().min(0),
+});
+
+app.post("/reputation", (req, res) => {
+  try {
+    const inputs = reputationSchema.parse(req.body);
+    const result = scoreReputation(inputs);
+    res.json({...result, recommendedLimitUsdc: recommendedLimitUsdc(result, inputs.creditCapUsdc)});
+  } catch (e: any) {
+    if (badRequest(res, e)) return;
+    res.status(400).json({error: e?.message ?? "reputation failed"});
   }
 });
 

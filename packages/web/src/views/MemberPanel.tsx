@@ -23,6 +23,7 @@ import {applyForPolicy} from "../lib/policy";
 import {getUnlinkClient} from "../lib/unlink";
 import {getBankMembers} from "../lib/events";
 import {issueStatement, formatBand} from "../lib/statements";
+import {getReputation} from "../lib/reputation";
 import type {BankInfo} from "../lib/contracts";
 import {Money, Badge, Field, Notice, Toggle, useTx, TxButton, Section} from "../components";
 
@@ -287,6 +288,18 @@ function CreditCard({bank, member, onChange}: {bank: BankInfo; member: any; onCh
   const [amount, setAmount] = useState("1000");
   const m = member.data;
 
+  // reputation-based credit (feature #8): score on-chain repayment history into an unlocked limit
+  const rep = useAsync(
+    () =>
+      getReputation(
+        bank.address,
+        wallet.address!,
+        m ? Number(fromUsdc(m.debt)) : 0,
+        Number(fromUsdc(bank.risk.maxCreditPerBorrower)),
+      ),
+    [bank.address, wallet.address, m?.debt, tx.ok],
+  );
+
   async function doBorrow() {
     await tx.run(() => borrow(wallet.walletClient!, bank.address, toUsdc(amount || "0")), "Borrowed ✓");
     member.refresh();
@@ -302,12 +315,25 @@ function CreditCard({bank, member, onChange}: {bank: BankInfo; member: any; onCh
     onChange();
   }
 
+  const r = rep.data;
   return (
-    <Section title="Credit line" icon="💳">
+    <Section title="Credit line" icon="💳" action={r ? <Badge tone={r.tier >= 3 ? "green" : r.tier >= 2 ? "brand" : "amber"}>reputation tier {r.tier}</Badge> : undefined}>
+      {r && (
+        <div className="card" style={{background: "var(--surface-2, rgba(0,0,0,0.02))", padding: 12, marginBottom: 12}}>
+          <div className="kv"><span className="k">Reputation score</span><span className="val mono">{r.score}/100</span></div>
+          <div className="kv"><span className="k">Repayment-unlocked credit</span><span className="val"><Money v={toUsdc(String(r.recommendedLimitUsdc))} /></span></div>
+          <div className="bar" style={{height: 6, borderRadius: 4, background: "rgba(0,0,0,0.08)", overflow: "hidden", margin: "8px 0"}}>
+            <div style={{width: `${r.multiplier * 100}%`, height: "100%", background: "var(--brand, #6c5ce7)"}} />
+          </div>
+          <div className="hint">
+            {r.factors.length ? r.factors.join(" · ") : "Borrow and repay on time to build reputation"} — unlocks up to the bank cap of <Money v={bank.risk.maxCreditPerBorrower} />.
+          </div>
+        </div>
+      )}
       <div className="kv"><span className="k">Credit limit</span><span className="val">{m ? <Money v={m.creditLimit} /> : "…"}</span></div>
       <div className="kv"><span className="k">Outstanding debt</span><span className="val">{m ? <Money v={m.debt} /> : "…"}</span></div>
       <div className="kv"><span className="k">Available to draw</span><span className="val">{m ? <Money v={m.availableCredit} /> : "…"}</span></div>
-      {m && m.creditLimit === 0n && <div className="hint" style={{marginTop: 8}}>No line yet — ask the steward to open one.</div>}
+      {m && m.creditLimit === 0n && <div className="hint" style={{marginTop: 8}}>No line yet — ask the steward to open one (they can grant up to your reputation-unlocked limit).</div>}
       <div className="inline-input" style={{marginTop: 12}}>
         <input value={amount} onChange={(e) => setAmount(e.target.value)} />
         <TxButton onClick={doBorrow} className="btn primary" pending={tx.pending} disabled={!m || m.creditLimit === 0n}>Borrow</TxButton>
