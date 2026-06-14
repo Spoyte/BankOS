@@ -2,6 +2,7 @@ import type {Address} from "viem";
 import {useAsync} from "../hooks";
 import {listBanks, getBankInfo, type BankInfo} from "../lib/contracts";
 import {Money, Badge, BankLogo, Notice} from "../components";
+import {StatementVerifier} from "./StatementVerifier";
 
 export function Discover({onOpen}: {onOpen: (b: Address) => void}) {
   const banks = useAsync(async () => {
@@ -28,6 +29,10 @@ export function Discover({onOpen}: {onOpen: (b: Address) => void}) {
         {banks.data?.map((b) => (
           <BankCard key={b.address} info={b} onOpen={() => onOpen(b.address)} />
         ))}
+      </div>
+
+      <div style={{marginTop: 24, maxWidth: 620}}>
+        <StatementVerifier />
       </div>
     </div>
   );

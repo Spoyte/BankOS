@@ -10,7 +10,7 @@ Tracks the parent [`../../docs/FEATURE-IDEAS.md`](../../docs/FEATURE-IDEAS.md) a
 | 4 | Cross-chain deposit via LI.FI | ⬜ |
 | 5 | Gasless onboarding (Dynamic AA/paymaster) | ⬜ |
 | 6 | Recurring private payments / payroll | ✅ shipped |
-| 7 | Selective-disclosure statements | ⬜ |
+| 7 | **Selective-disclosure statements** | ✅ shipped (bank-signed, range-disclosed, verified trustlessly client-side) |
 | 8 | Reputation-based credit | ⬜ |
 | 9 | Inter-bank settlement | ⬜ |
 | 10 | Multi-currency (EURC) + FX | ⬜ |

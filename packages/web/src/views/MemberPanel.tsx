@@ -22,8 +22,9 @@ import {
 import {applyForPolicy} from "../lib/policy";
 import {getUnlinkClient} from "../lib/unlink";
 import {getBankMembers} from "../lib/events";
+import {issueStatement, formatBand} from "../lib/statements";
 import type {BankInfo} from "../lib/contracts";
-import {Money, Badge, Field, Notice, useTx, TxButton, Section} from "../components";
+import {Money, Badge, Field, Notice, Toggle, useTx, TxButton, Section} from "../components";
 
 export function MemberPanel({bank, onChange, version}: {bank: BankInfo; onChange: () => void; version: number}) {
   const wallet = useWallet();
@@ -47,8 +48,92 @@ export function MemberPanel({bank, onChange, version}: {bank: BankInfo; onChange
         {eligible && bank.products.checking && (
           <CheckingCard bank={bank} member={member} onChange={onChange} />
         )}
+        {eligible && <DisclosureCard bank={bank} />}
       </div>
     </div>
+  );
+}
+
+// ----------------------------------------------------------- selective disclosure (feature #7)
+function DisclosureCard({bank}: {bank: BankInfo}) {
+  const wallet = useWallet();
+  const tx = useTx();
+  const [disclose, setDisclose] = useState({balanceBand: true, compliance: true, activity: true});
+  const [bandSize, setBandSize] = useState("10000"); // band width in human USDC
+  const [out, setOut] = useState<{token: string; statement: any} | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function generate() {
+    setOut(null);
+    setCopied(false);
+    await tx.run(async () => {
+      const c = await getUnlinkClient(wallet.walletClient!, wallet.address!);
+      const res = await issueStatement({
+        subject: c.getAddress(),
+        bank: bank.address,
+        member: wallet.address!,
+        token: usdcAddress,
+        bandSize: toUsdc(bandSize || "0").toString(),
+        disclose,
+      });
+      setOut({token: res.token, statement: res.statement});
+    }, "Statement issued ✓");
+  }
+
+  const claims = out?.statement?.claims;
+  return (
+    <Section title="Prove it — selective disclosure" icon="📄" action={<Badge tone="brand">Chainlink + Unlink</Badge>}>
+      <p className="muted" style={{marginTop: 0}}>
+        Generate a signed statement proving <em>only</em> what you choose — a balance <strong>range</strong>{" "}
+        (never the exact figure), your compliance tier, or your activity — to share with an auditor or lender.
+      </p>
+      <Toggle on={disclose.balanceBand} onChange={(v) => setDisclose({...disclose, balanceBand: v})} label="Balance range" />
+      <Toggle on={disclose.compliance} onChange={(v) => setDisclose({...disclose, compliance: v})} label="Compliance tier (on-chain, via CRE)" />
+      <Toggle on={disclose.activity} onChange={(v) => setDisclose({...disclose, activity: v})} label="Account activity" />
+      {disclose.balanceBand && (
+        <Field label="Balance range width (USDC)" hint="Wider band = less precise = more private">
+          <select className="input" value={bandSize} onChange={(e) => setBandSize(e.target.value)}>
+            <option value="1000">±1,000</option>
+            <option value="10000">±10,000</option>
+            <option value="50000">±50,000</option>
+            <option value="100000">±100,000</option>
+          </select>
+        </Field>
+      )}
+      <TxButton
+        onClick={generate}
+        className="btn primary block"
+        pending={tx.pending}
+        disabled={!disclose.balanceBand && !disclose.compliance && !disclose.activity}
+      >
+        Generate statement
+      </TxButton>
+      {tx.error && <Notice tone="err">{tx.error}</Notice>}
+
+      {out && (
+        <div style={{marginTop: 12}}>
+          <div className="muted" style={{fontSize: 12, marginBottom: 6}}>Discloses:</div>
+          <ul style={{margin: "0 0 10px", paddingLeft: 18, lineHeight: 1.8, fontSize: 13}}>
+            {claims?.balanceBand && <li>balance in <strong>{formatBand(claims.balanceBand)}</strong></li>}
+            {claims?.compliance && <li>compliance tier <strong>{claims.compliance.tier}</strong> ({claims.compliance.jurisdiction || "—"})</li>}
+            {claims?.activity && <li>{claims.activity.privateTransfers} private transfer(s)</li>}
+          </ul>
+          <textarea className="input mono" readOnly style={{width: "100%", minHeight: 70, fontSize: 11}} value={out.token} />
+          <button
+            className="btn sm block"
+            onClick={() => {
+              navigator.clipboard?.writeText(out.token);
+              setCopied(true);
+            }}
+          >
+            {copied ? "Copied ✓" : "Copy statement to share"}
+          </button>
+          <div className="faint" style={{fontSize: 11, marginTop: 6}}>
+            Anyone can verify this in the <strong>Discover</strong> tab — no access to your account needed.
+          </div>
+        </div>
+      )}
+    </Section>
   );
 }
 

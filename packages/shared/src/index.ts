@@ -8,6 +8,7 @@ import type {Address} from "viem";
 export interface Deployment {
   chainId: number;
   usdc: Address;
+  eurc?: Address; // optional second Arc-native asset (feature #10: multi-currency)
   policyRegistry: Address;
   executionRouter: Address;
   charterFactory: Address;

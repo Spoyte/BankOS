@@ -6,7 +6,8 @@
   "main": "src/client.ts",
   "exports": {
     ".": "./src/client.ts",
-    "./account": "./src/account.ts"
+    "./account": "./src/account.ts",
+    "./statements": "./src/statements.ts"
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",
