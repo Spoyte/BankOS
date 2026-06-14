@@ -25,12 +25,15 @@
     "engine:dev": "npm -w @bankos/unlink-engine run dev",
     "web:dev": "npm -w @bankos/web run dev",
     "seed": "npm -w @bankos/cre-policy run seed",
-    "demo": "bash scripts/demo.sh"
+    "demo": "bash scripts/demo.sh",
+    "test:e2e": "playwright test",
+    "test:e2e:fresh": "bash scripts/demo.sh && playwright test"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "vitest": "^2.1.8"
   }
 }
