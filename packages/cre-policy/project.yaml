@@ -1,0 +1,25 @@
+# ==========================================================================
+# CRE PROJECT SETTINGS — BankOS compliance workflow
+# ==========================================================================
+# Arc is registered as an EXPERIMENTAL chain (not yet in the official chain-selectors registry),
+# so commands need --allow-unknown-chains. In the workflow, reference it by its selector
+# (config.chainSelector = "5042002"). The forwarder is the DON's KeystoneForwarder; it must be
+# authorized on PolicyRegistry via setAttester(forwarder, true) before a live deploy.
+# ==========================================================================
+staging-settings:
+  experimental-chains:
+    - chain-selector: 5042002
+      rpc-url: https://rpc.testnet.arc.network
+      forwarder: "0x0000000000000000000000000000000000000000"
+  rpcs:
+    - chain-name: arc-testnet
+      url: https://rpc.testnet.arc.network
+
+production-settings:
+  experimental-chains:
+    - chain-selector: 5042002
+      rpc-url: https://rpc.testnet.arc.network
+      forwarder: "0x0000000000000000000000000000000000000000"
+  rpcs:
+    - chain-name: arc-testnet
+      url: https://rpc.testnet.arc.network

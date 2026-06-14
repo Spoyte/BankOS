@@ -1,0 +1,4 @@
+# CRE build artifacts (cre workflow simulate/build writes these)
+.cre_build_tmp.*
+dist/
+*.env

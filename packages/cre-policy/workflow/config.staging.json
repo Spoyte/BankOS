@@ -1,0 +1,6 @@
+{
+  "chainSelector": "5042002",
+  "policyRegistry": "0xB2ab070Bc1aB3c2be8B1D3ABb122Fd55a489dAa5",
+  "gasLimit": "600000",
+  "evmWrite": false
+}

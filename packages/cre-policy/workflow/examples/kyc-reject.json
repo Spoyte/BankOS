@@ -1,0 +1,10 @@
+{
+  "bank": "0x1111111111111111111111111111111111111111",
+  "member": "0x3333333333333333333333333333333333333333",
+  "kyc": {
+    "fullName": "Blocked Person",
+    "country": "KP",
+    "dateOfBirth": "1990-01-01",
+    "sanctionsConsent": true
+  }
+}

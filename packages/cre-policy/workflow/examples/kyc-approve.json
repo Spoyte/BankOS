@@ -1,0 +1,13 @@
+{
+  "bank": "0x1111111111111111111111111111111111111111",
+  "member": "0x2222222222222222222222222222222222222222",
+  "kyc": {
+    "fullName": "Alice Example",
+    "country": "US",
+    "region": "NY",
+    "dateOfBirth": "1990-01-01",
+    "governmentIdHash": "0xverifiedidhash1234567890",
+    "sanctionsConsent": true,
+    "requestsCredit": true
+  }
+}
